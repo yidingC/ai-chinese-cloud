@@ -77,6 +77,7 @@
           <span class="cls-rank-trophy" aria-hidden="true">
             <svg class="cls-trophy" viewBox="0 0 24 24"><use href="#clsTrophyShape" fill="url(#clsTrophyGold)" stroke="url(#clsTrophyGold)"/><g clip-path="url(#clsTrophyClip)"><rect class="cls-shine" x="0" y="-6" width="7" height="36"/></g></svg>
           </span>
+          <span class="cls-rank-label">得分排名</span>
           <span class="cls-rank-num" data-rank-num><span class="cls-roll">等你上榜</span></span>
           <span class="cls-rank-sep" data-rank-sep hidden>/ 40 ·</span>
           <span class="cls-rank-score" data-rank-score hidden><span class="cls-roll">0分</span></span>
@@ -239,10 +240,22 @@
     </section>
   </div>
 
+  <!-- 速度榜（卡面上那粒 ⚡）：名字 + 用时，只看谁快 -->
+  <div class="modal-overlay hidden" data-board-overlay>
+    <section class="completion-modal speed-modal" role="dialog" aria-modal="true" aria-labelledby="speed-title" tabindex="-1" data-board-card>
+      <button type="button" class="speed-close" data-board-close aria-label="关闭">×</button>
+      <div class="speed-badge" aria-hidden="true"><span data-board-icon>⚡</span></div>
+      <p class="speed-title" id="speed-title">速度榜</p>
+      <ul class="speed-list" data-board-list></ul>
+      <p class="speed-me is-waiting" data-board-me hidden></p>
+    </section>
+  </div>
+
   <script type="module" src="shared/seed-data.js"></script>
   <script type="module" src="shared/activity-types.js"></script>
   <script type="module" src="shared/activity-fab.js"></script>
   <script type="module" src="shared/platform-store.js"></script>
+  <script type="module" src="classroom-course.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

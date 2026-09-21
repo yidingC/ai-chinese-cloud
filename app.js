@@ -3,20 +3,122 @@
 
   const STORAGE_KEY = "ai-chinese-cloud-classroom-demo-v1";
   const platformStore = window.AICloudPlatformStore;
+  const activityTypes = window.AICloudActivityTypes;
   const adminBase = "admin/";
+  /* 旧的三个完成标记：继续写（老进度存在它们身上），但课堂页现在认任意关卡号 */
   const TASK_STATE_KEYS = ["task1Done", "task2Done", "task3Done"];
-  /* 班级人数：我 + 39 位同学（卡片人数和名次行共用这一个数，一页不许出现两个数字） */
-  const CLASSROOM_TOTAL = 40;
-  /* 每完成一关得多少分（做错不扣分，同一关重做不重复加） */
-  const LEVEL_POINTS = 5;
-  /* 满分：按关卡数算，不写死 */
-  const MAX_SCORE = TASK_STATE_KEYS.length * LEVEL_POINTS;
+  /* 关卡卡片的配色只有这三种；数据里没写明或写错时按顺序循环分配 */
+  const COURSE_TONES = ["violet", "mint", "orange"];
+
+  /* 兜底课程数据：数据文件 classroom-course.js 没加载或格式不对时用这一份（= 线上现在的 3 关）。
+     ⚠️ 改课程请改数据文件 classroom-course.js，别改这里 —— 这份只负责"数据坏了也不白屏"。 */
+  const DEFAULT_COURSE = Object.freeze({
+    lesson: { title: "嗨！你好！", subtitle: "Interaksi Kelas" },
+    classSize: 40,
+    pointsPerLevel: 5,
+    levels: [
+      { type: "choice", tone: "violet", title: "快速选择", subtitle: "Pilihan cepat" },
+      { type: "picture", tone: "mint", title: "看图单选", subtitle: "Pilih gambar" },
+      { type: "match", tone: "orange", title: "问候时间连线", subtitle: "Hubungkan waktu" }
+    ]
+  });
+
+  /* 关卡卡片表：题型 → 页面文件名 + 卡片右下角那张图形。
+     页面文件名跟 shared/activity-types.js 保持一致；没写 art 的题型自动用通用图形。
+     以后加题型/换插画只改这一处。 */
+  const LEVEL_CARDS = {
+    choice: {
+      page: "interaction-choice.html",
+      art: `<rect x="18" y="30" width="84" height="24" rx="12" fill="none" stroke="currentColor" stroke-width="9"/><rect x="18" y="66" width="84" height="24" rx="12" fill="currentColor"/>`
+    },
+    picture: {
+      page: "interaction-picture.html",
+      art: `<rect x="22" y="28" width="76" height="62" rx="14" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="76" cy="50" r="8" fill="currentColor"/><path d="M34 82l16-18 11 12 9-8 14 14" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`
+    },
+    match: {
+      page: "match.html",
+      art: `<circle cx="34" cy="34" r="13" fill="currentColor"/><path d="M45 45c13 2 23 12 30 30" stroke="currentColor" stroke-width="11" stroke-linecap="round" fill="none"/><circle cx="86" cy="86" r="13" fill="currentColor"/>`
+    },
+    listening: {
+      page: "interaction-listening.html",
+      art: `<path d="M30 52v16l20 12V40z" fill="currentColor"/><path d="M64 46a20 20 0 0 1 0 28" stroke="currentColor" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M80 34a36 36 0 0 1 0 52" stroke="currentColor" stroke-width="9" stroke-linecap="round" fill="none"/>`
+    },
+    fill: {
+      page: "interaction-fill.html",
+      art: `<rect x="18" y="30" width="84" height="24" rx="12" fill="currentColor"/><rect x="18" y="66" width="34" height="24" rx="12" fill="currentColor"/><rect x="62" y="66" width="40" height="24" rx="12" fill="none" stroke="currentColor" stroke-width="9" stroke-dasharray="10 9"/>`
+    },
+    order: { page: "interaction-order.html" },
+    poll: { page: "interaction-poll.html" },
+    memory: { page: "memory.html" },
+    "picture-match": { page: "interaction-picture-match.html" },
+    situation: { page: "interaction-situation.html" },
+    dialogue: { page: "interaction-dialogue.html" },
+    "pinyin-match": { page: "interaction-pinyin-match.html" },
+    category: { page: "interaction-category.html" },
+    "word-build": { page: "interaction-word-build.html" },
+    correction: { page: "interaction-correction.html" },
+    "read-aloud": { page: "interaction-read-aloud.html" },
+    "picture-talk": { page: "interaction-picture-talk.html" },
+    "open-qa": { page: "interaction-open-qa.html" }
+  };
+  const GENERIC_CARD_ART = `<circle cx="60" cy="60" r="34" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="60" cy="60" r="10" fill="currentColor"/>`;
+
+  const cardPage = (type) => {
+    const card = LEVEL_CARDS[type];
+    if (card && card.page) return card.page;
+    const meta = activityTypes && typeof activityTypes.get === "function" ? activityTypes.get(type) : null;
+    return (meta && meta.page) || `interaction-${type}.html`;
+  };
+  const cardArt = (type) => (LEVEL_CARDS[type] && LEVEL_CARDS[type].art) || GENERIC_CARD_ART;
+
+  /* 关卡链接：自动拼上题型、课堂模式和第几关（1、2、3…），这样做完才记得上账 */
+  const levelHref = (type, slot) => `${cardPage(type)}?type=${encodeURIComponent(type)}&mode=class&slot=${slot}`;
+
+  /* 课程数据校验：缺字段、没有关卡、格式不对 → 整份退回兜底数据 */
+  function normalizeCourse(raw) {
+    const source = raw && typeof raw === "object" ? raw : {};
+    const lesson = source.lesson && typeof source.lesson === "object" ? source.lesson : {};
+    const levels = (Array.isArray(source.levels) ? source.levels : [])
+      .filter((level) => level && typeof level === "object" && typeof level.type === "string" && level.type.trim())
+      .map((level, index) => {
+        const type = level.type.trim();
+        const meta = activityTypes && typeof activityTypes.get === "function" ? activityTypes.get(type) : null;
+        return {
+          type: type,
+          tone: COURSE_TONES.indexOf(level.tone) >= 0 ? level.tone : COURSE_TONES[index % COURSE_TONES.length],
+          title: typeof level.title === "string" && level.title.trim()
+            ? level.title.trim()
+            : (meta ? meta.cardTitle || meta.title : type),
+          subtitle: typeof level.subtitle === "string"
+            ? level.subtitle.trim()
+            : (meta ? meta.titleId : "")
+        };
+      });
+    if (!levels.length) return DEFAULT_COURSE;
+    const classSize = Math.round(Number(source.classSize));
+    const pointsPerLevel = Number(source.pointsPerLevel);
+    return {
+      lesson: {
+        title: typeof lesson.title === "string" && lesson.title.trim() ? lesson.title.trim() : DEFAULT_COURSE.lesson.title,
+        subtitle: typeof lesson.subtitle === "string" ? lesson.subtitle.trim() : DEFAULT_COURSE.lesson.subtitle
+      },
+      classSize: classSize > 0 ? classSize : DEFAULT_COURSE.classSize,
+      pointsPerLevel: pointsPerLevel > 0 ? pointsPerLevel : DEFAULT_COURSE.pointsPerLevel,
+      levels: levels
+    };
+  }
+
   const DEFAULT_STATE = Object.freeze({
     phase: "live",
     task1Done: false,
     task2Done: false,
     task3Done: false,
-    celebrated: false
+    celebrated: false,
+    /* completedSlots：任意关卡的完成记录；results：题型页写下的每关结果（课堂页保存时不能丢） */
+    completedSlots: [],
+    results: [],
+    /* speedTimes：速度榜里"我的用时"（关号 → 整秒）。第一次完成那一刻定死，重做不变 */
+    speedTimes: {}
   });
 
   const PHASES = {
@@ -64,17 +166,22 @@
   function loadState() {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { ...DEFAULT_STATE };
+      if (!raw) return { ...DEFAULT_STATE, completedSlots: [], results: [], speedTimes: {} };
       const parsed = JSON.parse(raw);
       return {
         phase: PHASES[parsed.phase] ? parsed.phase : DEFAULT_STATE.phase,
         task1Done: Boolean(parsed.task1Done),
         task2Done: Boolean(parsed.task2Done),
         task3Done: Boolean(parsed.task3Done),
-        celebrated: Boolean(parsed.celebrated)
+        celebrated: Boolean(parsed.celebrated),
+        completedSlots: Array.isArray(parsed.completedSlots)
+          ? parsed.completedSlots.map(Number).filter((slot) => Number(slot) > 0)
+          : [],
+        results: Array.isArray(parsed.results) ? parsed.results : [],
+        speedTimes: parsed.speedTimes && typeof parsed.speedTimes === "object" ? parsed.speedTimes : {}
       };
     } catch (error) {
-      return { ...DEFAULT_STATE };
+      return { ...DEFAULT_STATE, completedSlots: [], results: [], speedTimes: {} };
     }
   }
 
@@ -95,6 +202,67 @@
   function phase() {
     return PHASES[appState.phase] || PHASES.live;
   }
+
+  /* 已完成的关卡号（1 起）。三个来源合起来看：
+     旧的 task1Done / task2Done / task3Done ＋ 新的 completedSlots ＋ 题型页写下的 results[].slot */
+  function completedSlotsOf(state) {
+    const slots = new Set();
+    TASK_STATE_KEYS.forEach((key, index) => {
+      if (state[key]) slots.add(index + 1);
+    });
+    (Array.isArray(state.completedSlots) ? state.completedSlots : []).forEach((slot) => {
+      const value = Number(slot);
+      if (value > 0) slots.add(value);
+    });
+    (Array.isArray(state.results) ? state.results : []).forEach((item) => {
+      const value = item ? Number(item.slot) : 0;
+      if (value > 0) slots.add(value);
+    });
+    return [...slots].sort((a, b) => a - b);
+  }
+
+  /* 记一关完成（关卡号随意）；第 1-3 关继续写旧字段，老进度不丢 */
+  function markSlotDone(slot) {
+    const index = Number(slot) || 0;
+    if (index <= 0) return;
+    const slots = new Set(completedSlotsOf(appState).concat(index));
+    const patch = { completedSlots: [...slots].sort((a, b) => a - b) };
+    if (index <= TASK_STATE_KEYS.length) patch[TASK_STATE_KEYS[index - 1]] = true;
+    updateState(patch);
+  }
+
+  /* 链接里带的关卡号（课堂页给每关都拼了 slot）；没有就退回默认值 */
+  function slotFromUrl(fallback) {
+    try {
+      const slot = Number(new URLSearchParams(window.location.search).get("slot")) || 0;
+      return slot > 0 ? slot : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  /* 连线这类页面就在本文件里（不是题型页），完成时就地补一条 results：
+     形状和题型页桥接件写下的那条一样；速度榜的"我的用时"要读它 */
+  function recordOwnTime(slot, type, startedAt) {
+    const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    const kept = (Array.isArray(appState.results) ? appState.results : [])
+      .filter((item) => !item || Number(item.slot) !== slot);
+    updateState({
+      results: kept.concat({
+        slot: slot,
+        type: type,
+        correct: true,
+        seconds: seconds,
+        completedAt: new Date().toISOString()
+      })
+    });
+  }
+
+  /* 数据里来的文字进 innerHTML 前先转义 */
+  const escapeText = (text) => String(text === null || text === undefined ? "" : text).replace(
+    /[&<>"]/g,
+    (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])
+  );
 
   function showToast(message, duration = 2200) {
     let toast = document.querySelector(".toast");
@@ -184,7 +352,15 @@
     });
 
     overlay.querySelector("[data-demo-reset]").addEventListener("click", () => {
-      updateState({ task1Done: false, task2Done: false, task3Done: false, celebrated: false });
+      updateState({
+        task1Done: false,
+        task2Done: false,
+        task3Done: false,
+        celebrated: false,
+        completedSlots: [],
+        results: [],
+        speedTimes: {}
+      });
       showToast("三关互动进度已重置");
       renderActive();
       close();
@@ -310,15 +486,21 @@
     render();
   }
 
-  const CLASSROOM_LEVELS = [
-    { href: "interaction-choice.html?type=choice&mode=class&slot=1" },
-    { href: "interaction-picture.html?type=picture&mode=class&slot=2" },
-    { href: "match.html" }
-  ];
-
   function initClassroom() {
+    /* 这一节课的课程数据：读 classroom-course.js（同一页的另一个脚本）；读不到就走兜底。
+       在这里读、不在文件顶上读 —— 脚本之间谁先谁后跟打包方式有关，进场时读最稳。 */
+    const COURSE = normalizeCourse(window.AICloudClassroomCourse);
+    const LEVEL_COUNT = COURSE.levels.length;
+    /* 班级人数：卡片人数和名次行共用这一个数（数据里配，一页不许出现两个数字） */
+    const CLASSROOM_TOTAL = COURSE.classSize;
+    /* 每完成一关得多少分（做错不扣分，同一关重做不重复加） */
+    const LEVEL_POINTS = COURSE.pointsPerLevel;
+    /* 满分：按关卡数算，不写死 */
+    const MAX_SCORE = LEVEL_COUNT * LEVEL_POINTS;
+
     const strip = document.querySelector(".cls-strip");
-    const stars = [...document.querySelectorAll("[data-stars] .cls-star")];
+    /* 星星节点由 renderCourseShell() 按数据重建，取节点要放在重建之后（见下方 stars 赋值） */
+    let stars = [];
     const resetButton = document.querySelector("[data-classroom-reset]");
     const celebrateOverlay = document.querySelector("[data-celebrate-overlay]");
     const celebrateCard = document.querySelector("[data-celebrate-card]");
@@ -350,10 +532,7 @@
       }
     };
 
-    /* 人数口径只留一处：卡片上的 /40 与名次行的 / 40 用同一个常量 */
-    document.querySelectorAll(".cls-count-total").forEach((node) => {
-      node.textContent = `/${CLASSROOM_TOTAL}`;
-    });
+    /* 人数口径只留一处：卡片上的 /40 与名次行的 / 40 用同一个数（数据里的 classSize） */
     if (rankSep) rankSep.textContent = `/ ${CLASSROOM_TOTAL} ·`;
 
     const PLAY_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M8 4.6v14.8l12.2-7.4z"/></svg>`;
@@ -361,22 +540,91 @@
     const LOCK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.8" y="10.6" width="14.4" height="9.2" rx="2.9" fill="currentColor" stroke="none"/><path d="M8.4 10.6V8.3a3.6 3.6 0 0 1 7.2 0v2.3"/></svg>`;
     const CHECK_ICON = `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#1fbf8f" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.4 12.9l4.4 4.4L18.7 7.9"/></svg>`;
 
+    /* ---- 按课程数据搭外壳：课节名、星星数量、关卡卡片（数量 / 顺序 / 标题 / 配色全部来自数据） ---- */
+    const STAR_MARKUP = `<svg class="cls-star" viewBox="0 0 24 24"><use href="#clsStarShape"/><g clip-path="url(#clsStarClip)"><rect class="cls-shine" x="0" y="-6" width="7" height="36"/></g></svg>`;
+    const PEOPLE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"></circle><path d="M3.6 19a5.4 5.4 0 0 1 10.8 0"></path><circle cx="16.8" cy="8.6" r="2.6" opacity=".6"></circle><path d="M13.8 19a5 5 0 0 1 10 0" opacity=".6"></path></svg>`;
+    const CONNECTOR_RIGHT = `<span class="cls-link" aria-hidden="true"><svg viewBox="0 0 78 58" fill="none" stroke="#d5d1e6" stroke-width="3.5" stroke-dasharray="6 8" stroke-linecap="round"><line x1="10" y1="5" x2="68" y2="53"/></svg></span>`;
+    const CONNECTOR_LEFT = `<span class="cls-link" aria-hidden="true"><svg viewBox="0 0 78 58" fill="none" stroke="#d5d1e6" stroke-width="3.5" stroke-dasharray="6 8" stroke-linecap="round"><line x1="68" y1="5" x2="10" y2="53"/></svg></span>`;
+
+    const renderCourseShell = () => {
+      const lessonNode = document.querySelector(".cls-strip-lesson");
+      if (lessonNode) lessonNode.textContent = COURSE.lesson.title;
+      /* 印尼语副标题先挂在属性上留档（状态条按口径只有中文），以后要上屏从这里取 */
+      if (strip) strip.dataset.lessonId = COURSE.lesson.subtitle;
+
+      const starsBox = document.querySelector("[data-stars]");
+      if (starsBox) starsBox.innerHTML = COURSE.levels.map(() => STAR_MARKUP).join("");
+
+      const board = document.querySelector(".cls-levels");
+      if (!board) return;
+      board.innerHTML = COURSE.levels.map((level, index) => {
+        const slot = index + 1;
+        const card = `
+      <div class="cls-level-row" data-level-row="${slot}">
+      <button type="button" class="cls-level" data-tone="${level.tone}" data-level="${slot}" data-state="locked">
+        <span class="cls-level-badge" data-badge>${slot}</span>
+        <span class="cls-level-copy">
+          <span class="cls-level-title">${escapeText(level.title)}</span>
+          <span class="cls-level-id">${escapeText(level.subtitle)}</span>
+          <span class="cls-class-count" data-level-count hidden>
+            ${PEOPLE_ICON}
+            <b data-count-num>0</b><span class="cls-count-total">/${CLASSROOM_TOTAL}</span>
+          </span>
+        </span>
+        <span class="cls-level-action is-lock" data-action aria-hidden="true">${LOCK_ICON}</span>
+        <svg class="cls-level-art" viewBox="0 0 120 120" aria-hidden="true">${cardArt(level.type)}</svg>
+      </button>
+      <button type="button" class="cls-level-board" data-board-open="${slot}" aria-label="看第 ${slot} 关的速度榜">
+        <span class="cls-level-board-icon" data-board-icon aria-hidden="true">⚡</span>
+      </button>
+      </div>`;
+        if (slot === COURSE.levels.length) return card;
+        return card + (slot % 2 === 1 ? CONNECTOR_RIGHT : CONNECTOR_LEFT);
+      }).join("");
+    };
+    renderCourseShell();
+    stars = [...document.querySelectorAll("[data-stars] .cls-star")];
+
     const levels = [...document.querySelectorAll(".cls-level")].map((node) => {
       const index = Number(node.dataset.level) || 0;
+      const level = COURSE.levels[index - 1] || {};
       return {
         node,
         index,
-        key: TASK_STATE_KEYS[index - 1],
-        href: (CLASSROOM_LEVELS[index - 1] || {}).href || "",
+        type: level.type || "",
+        href: level.type ? levelHref(level.type, index) : "",
+        row: node.closest(".cls-level-row"),
+        board: node.closest(".cls-level-row") ? node.closest(".cls-level-row").querySelector(".cls-level-board") : null,
         badge: node.querySelector("[data-badge]"),
         action: node.querySelector("[data-action]"),
         count: node.querySelector("[data-level-count]")
       };
     });
 
-    const unlockedBefore = (index) => TASK_STATE_KEYS
-      .slice(0, Math.max(0, index - 1))
-      .every((key) => Boolean(appState[key]));
+    /* ⚡ 那粒钮贴着卡片的右上角（卡片会左右错位，所以按实际位置算，3 关 5 关都不会跑偏） */
+    const BOARD_INSET = 28;
+    const layoutBoardButtons = () => {
+      levels.forEach((level) => {
+        if (!level.row || !level.board) return;
+        const card = level.node;
+        const gapRight = level.row.clientWidth - (card.offsetLeft + card.offsetWidth);
+        level.board.style.right = gapRight + BOARD_INSET + "px";
+      });
+    };
+    layoutBoardButtons();
+    window.addEventListener("resize", layoutBoardButtons);
+
+    /* 已完成的关卡号（只算这份课程里的，关掉课程外的旧记录不影响计分） */
+    const doneSlots = () => completedSlotsOf(appState).filter((slot) => slot <= LEVEL_COUNT);
+
+    /* 上一关都做完了才解锁这一关 */
+    const unlockedBefore = (index) => {
+      const done = doneSlots();
+      for (let slot = 1; slot < index; slot += 1) {
+        if (!done.includes(slot)) return false;
+      }
+      return true;
+    };
 
     /* ---- 演示用：虚构的班级。只用来算名次和卡片人数，界面上不出现"模拟"字样。
        正式接后台后只改 myScore / myRank 这两个函数 ---- */
@@ -407,7 +655,7 @@
 
     /* 我的分数：已完成关卡数 × 每关分值；只认完成状态，所以做错不扣分、重做不重复加
        —— 正式接后台后只改这里 —— */
-    const myScore = () => TASK_STATE_KEYS.filter((key) => Boolean(appState[key])).length * LEVEL_POINTS;
+    const myScore = () => doneSlots().length * LEVEL_POINTS;
 
     /* 名次 = 分数比我高的人数 + 1（同分并列，不比时间）
        —— 正式接后台后只改这里 —— */
@@ -586,6 +834,7 @@
       if (pool.length) {
         pool[Math.floor(Math.random() * pool.length)].score += LEVEL_POINTS;
         render();
+        if (boardLevel) renderBoard();
       }
       window.setTimeout(tick, 2600 + Math.random() * 1400);
     };
@@ -612,25 +861,26 @@
 
     const render = (force = false) => {
       const current = phase();
-      const completed = TASK_STATE_KEYS.filter((key) => Boolean(appState[key])).length;
+      const done = doneSlots();
+      const completed = done.length;
       const open = current.open;
 
       if (strip) strip.dataset.phase = appState.phase;
       stars.forEach((star, index) => star.classList.toggle("is-on", index < completed));
 
       levels.forEach((level) => {
-        const done = Boolean(appState[level.key]);
+        const finished = done.includes(level.index);
         const canPlay = open && unlockedBefore(level.index);
-        const state = done ? "done" : canPlay ? "todo" : "locked";
+        const state = finished ? "done" : canPlay ? "todo" : "locked";
         level.node.dataset.state = state;
-        if (level.badge) level.badge.innerHTML = done ? CHECK_ICON : String(level.index);
+        if (level.badge) level.badge.innerHTML = finished ? CHECK_ICON : String(level.index);
         if (level.action) {
-          level.action.classList.toggle("is-play", !done && canPlay);
-          level.action.classList.toggle("is-lock", !done && !canPlay);
-          level.action.innerHTML = done ? AGAIN_ICON : canPlay ? PLAY_ICON : LOCK_ICON;
+          level.action.classList.toggle("is-play", !finished && canPlay);
+          level.action.classList.toggle("is-lock", !finished && !canPlay);
+          level.action.innerHTML = finished ? AGAIN_ICON : canPlay ? PLAY_ICON : LOCK_ICON;
         }
         if (level.count) {
-          const visible = done || canPlay;
+          const visible = finished || canPlay;
           level.count.hidden = !visible;
           const value = countFor(level.index);
           const num = level.count.querySelector("[data-count-num]");
@@ -678,8 +928,151 @@
       });
     });
 
+    /* ---- 速度榜：卡面上那粒 ⚡ 弹出来的名单（同学用时是虚构的，只比快慢、不看分数） ---- */
+    const boardOverlay = document.querySelector("[data-board-overlay]");
+    const boardCard = document.querySelector("[data-board-card]");
+    const boardList = document.querySelector("[data-board-list]");
+    const boardMe = document.querySelector("[data-board-me]");
+    let boardLevel = 0;
+
+    const hashSeed = (text) => {
+      let hash = 2166136261;
+      for (let i = 0; i < text.length; i += 1) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619) >>> 0;
+      }
+      return hash / 4294967296;
+    };
+
+    /* 同一位同学、同一关，用时永远一样（整秒）；靠前的几位先做完，普遍更快 */
+    const peerTime = (level, index, name) => {
+      const jitter = hashSeed("t" + level + "|" + name);
+      const raw = 4 + index * 0.34 + jitter * 3.6 + (level - 1) * 1.6;
+      return Math.max(4, Math.round(raw));
+    };
+
+    /* 这一关做完的同学，按用时从快到慢排队；同秒的按"谁先到"排（不写并列） */
+    const boardEntries = (level) => peers
+      .map((peer, index) => ({ name: peer.name, score: peer.score, time: peerTime(level, index, peer.name), order: index }))
+      .filter((entry) => entry.score >= level * LEVEL_POINTS)
+      .sort((a, b) => (a.time - b.time) || (a.order - b.order));
+
+    const boardTimes = () => (appState.speedTimes && typeof appState.speedTimes === "object" ? appState.speedTimes : {});
+
+    /* 题型页记下的我的用时（老进度没记过，就退回一条固定的演示值） */
+    const recordedSeconds = (slot) => {
+      const item = (Array.isArray(appState.results) ? appState.results : [])
+        .find((result) => result && Number(result.slot) === slot);
+      const seconds = item ? Number(item.seconds) : 0;
+      return Number.isFinite(seconds) && seconds > 0 ? Math.max(1, Math.round(seconds)) : 0;
+    };
+
+    /* 我的用时：第一次完成那一刻记下，之后重做不变（重来一遍才清空） */
+    const rememberBoardTimes = () => {
+      const times = boardTimes();
+      const patch = {};
+      doneSlots().forEach((slot) => {
+        if (Number(times[slot]) > 0) return;
+        patch[slot] = recordedSeconds(slot) || peerTime(slot, 12, "aku");
+      });
+      if (Object.keys(patch).length) updateState({ speedTimes: { ...times, ...patch } });
+    };
+
+    const boardRowHtml = (place, name, time, isMe) =>
+      `<li class="speed-row${isMe ? " is-me" : ""}">`
+      + `<span class="speed-place">${place}.</span>`
+      + `<span class="speed-name">${escapeText(name)}</span>`
+      + `<span class="speed-time">${time} 秒</span>`
+      + "</li>";
+
+    const renderBoard = () => {
+      if (!boardLevel || !boardList || !boardMe) return;
+      const myTime = Number(boardTimes()[boardLevel]) || 0;
+      const all = boardEntries(boardLevel);
+      if (myTime > 0) all.push({ name: "你", time: myTime, isMe: true, order: -1 });
+      /* 同秒时"我"排在同学前面（先做完的那几位同学本来就排在前头） */
+      all.sort((a, b) => (a.time - b.time) || (a.order - b.order));
+
+      const top = all.slice(0, 5);
+      const meInTop = top.some((entry) => entry.isMe);
+      const rows = top.map((entry, index) => boardRowHtml(index + 1, entry.name, entry.time, !!entry.isMe));
+
+      if (!myTime) {
+        /* 这关还没做：名单照给，底下单独一行灰色的"你" */
+        rows.push('<li class="speed-row is-dots" aria-hidden="true">…</li>');
+        boardList.innerHTML = rows.join("");
+        boardMe.className = "speed-me is-waiting";
+        boardMe.innerHTML = '<span class="speed-name">你</span><span class="speed-time">还没上榜</span>';
+        boardMe.hidden = false;
+        return;
+      }
+
+      if (meInTop) {
+        /* 我在前五：只列五行，我那行的底子点亮一点（不重复列一遍） */
+        boardList.innerHTML = rows.join("");
+        boardMe.innerHTML = "";
+        boardMe.hidden = true;
+        return;
+      }
+
+      rows.push('<li class="speed-row is-dots" aria-hidden="true">…</li>');
+      boardList.innerHTML = rows.join("");
+      const faster = all.filter((entry) => entry.time < myTime).length;
+      boardMe.className = "speed-me";
+      boardMe.innerHTML = `<span class="speed-place">${faster + 1}.</span>`
+        + '<span class="speed-name">你</span>'
+        + `<span class="speed-time">${myTime} 秒</span>`;
+      boardMe.hidden = false;
+    };
+
+    const openBoard = (level) => {
+      if (!boardOverlay || !boardCard || !level) return;
+      boardLevel = level;
+      renderBoard();
+      boardOverlay.classList.remove("hidden");
+      if (typeof boardCard.focus === "function") boardCard.focus();
+    };
+
+    const closeBoard = () => {
+      boardLevel = 0;
+      if (boardOverlay) boardOverlay.classList.add("hidden");
+    };
+
+    levels.forEach((level) => {
+      if (!level.board) return;
+      level.board.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (boardLevel === level.index) {
+          closeBoard();
+          return;
+        }
+        openBoard(level.index);
+      });
+    });
+
+    const boardCloseButton = document.querySelector("[data-board-close]");
+    if (boardCloseButton) boardCloseButton.addEventListener("click", closeBoard);
+    if (boardOverlay) {
+      boardOverlay.addEventListener("click", (event) => {
+        if (event.target === boardOverlay) closeBoard();
+      });
+    }
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && boardLevel) closeBoard();
+    });
+
+    /* 图标先出 ⚡ 这一版；地址后面加 ?icon=word 可以对比"榜"字版 */
+    if (new URLSearchParams(window.location.search).get("icon") === "word") {
+      document.querySelectorAll("[data-board-icon]").forEach((node) => { node.textContent = "榜"; });
+      document.querySelectorAll(".cls-level-board").forEach((node) => node.classList.add("is-word"));
+      const badge = document.querySelector(".speed-badge");
+      if (badge) badge.classList.add("is-word");
+    }
+
     let celebrateTimer = null;
-    const allTasksDone = () => TASK_STATE_KEYS.every((key) => Boolean(appState[key]));
+    /* 这份课程里的关卡全做完了才算全部完成 */
+    const allTasksDone = () => LEVEL_COUNT > 0 && doneSlots().length === LEVEL_COUNT;
     const maybeCelebrate = () => {
       if (!celebrateOverlay || appState.celebrated || !allTasksDone()) return;
       if (celebrateTimer !== null || !celebrateOverlay.classList.contains("hidden")) return;
@@ -743,6 +1136,7 @@
       dipUsed = false;
       lastRank = 0;
       peers = buildPeers();
+      closeBoard();
       if (celebrateTimer !== null) {
         window.clearTimeout(celebrateTimer);
         celebrateTimer = null;
@@ -760,17 +1154,27 @@
 
     if (resetButton) {
       resetButton.addEventListener("click", () => {
-        updateState({ task1Done: false, task2Done: false, task3Done: false, celebrated: false });
+        updateState({
+          task1Done: false,
+          task2Done: false,
+          task3Done: false,
+          celebrated: false,
+          completedSlots: [],
+          results: [],
+          speedTimes: {}
+        });
         replayRank();
         showToast("三关互动进度已重置");
       });
     }
 
     window.addEventListener("classroom-state-change", () => {
+      rememberBoardTimes();
       render();
       maybeCelebrate();
     });
     /* 进场：第一次来、或重做旧关卡（分数没变）直接显示；分数真的涨了才翻一次牌（前进才给金光） */
+    rememberBoardTimes();
     render();
     maybeCelebrate();
     /* 演示的同学得分：第一拍晚一点，让开场人数落在既定局面上（4 人满分 / 7 人 10 分 / 10 人 5 分） */
@@ -812,6 +1216,8 @@
     const progress = document.querySelector("[data-match-progress]");
     if (!board || !svg) return;
 
+    /* 这一关我用了多久：速度榜的"我的用时"要用 */
+    const startedAt = Date.now();
     const matched = new Set();
     let selected = null;
     let resolving = false;
@@ -895,8 +1301,11 @@
           redraw();
 
           if (matched.size === leftItems.length) {
-            updateState({ task3Done: true });
-            recordPlatformCompletion(3);
+            /* 记在第几关：课堂页的链接带 ?slot=N；单独打开这页时仍按第 3 关算 */
+            const slot = slotFromUrl(3);
+            recordOwnTime(slot, "match", startedAt);
+            markSlotDone(slot);
+            recordPlatformCompletion(slot);
             window.setTimeout(openCompleteModal, 520);
           }
           return;
@@ -1141,9 +1550,11 @@
     if (page === "memory") initMemory();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
+  /* 等 DOMContentLoaded 再进场：那一刻本页所有脚本都已执行完。
+     打包后脚本的先后顺序会变，课程数据这种"由另一个脚本提供"的东西必须等到这时才拿得到。 */
+  if (document.readyState === "complete") {
     init();
+  } else {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
   }
 })();

@@ -10,6 +10,6 @@ vite.config.d.ts
 # 根目录临时草稿 / 预览稿：本地留作参考，不进仓库
 tmp-*.cjs
 tmp-*.txt
-_*-preview.html
+_*-preview*.html
 _shot-frame.html
 mockup-*

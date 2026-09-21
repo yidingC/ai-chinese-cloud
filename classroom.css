@@ -72,6 +72,23 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 名次条前的那四个字：静态配角，比数字小一号、浅一档；翻牌与金光只作用于数字，它不跟着滚 */
+.cls-rank-label {
+  flex: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* 还没上榜时，四个字后面补一个分隔点：得分排名 · 等你上榜（有成绩时不需要，数字自己会接上） */
+.cls-rank.is-waiting .cls-rank-label::after {
+  content: "·";
+  margin-left: 5px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
 /* 翻牌槽：固定高度 + 裁切；新数字从上落下，旧数字向下滚出 */
 .cls-rank-num,
 .cls-rank-score {
@@ -447,6 +464,185 @@
 /* 变体 B：卡片左右错位 + 中间一条虚线，像关卡地图 */
 
 .cls-levels { gap: 4px; }
+
+/* 每张卡 + 卡面上那粒 ⚡ 的容器（卡片本身是按钮，里面塞不了第二个按钮，所以按钮放兄弟位） */
+.cls-level-row { position: relative; }
+
+.cls-level-board {
+  position: absolute;
+  z-index: 4;
+  top: 15px;
+  /* right 由 app.js 按卡片的右边缘算（卡片会左右错位，写死会跑偏） */
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 12px rgba(30, 18, 80, 0.22);
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .16s cubic-bezier(.2,.9,.3,1.3), background .16s ease;
+}
+
+.cls-level-board:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+/* ?icon=word 时的"榜"字版（照试稿留的对比口子） */
+.cls-level-board.is-word {
+  background: rgba(255, 255, 255, 0.36);
+  color: #5f49e8;
+}
+
+.cls-level-board-icon.is-word {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+/* ---- 速度榜弹窗：照全站弹窗（.modal-overlay + .completion-modal）的长相 ---- */
+.speed-modal {
+  position: relative;
+  padding: 30px 20px 20px;
+}
+
+.speed-badge {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 13px;
+  place-items: center;
+  border-radius: 50%;
+  background: #efeaff;
+  box-shadow: 0 0 0 12px rgba(101, 82, 255, 0.07);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.speed-badge.is-word {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--purple);
+}
+
+.speed-title {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.speed-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.speed-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 10px 10px;
+  border-top: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.speed-row:first-child {
+  border-top: 0;
+}
+
+.speed-place {
+  flex: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.speed-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 名字靠左、时间靠右 */
+.speed-time {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 我那行：底子点亮一点 */
+.speed-row.is-me {
+  background: #f3f1ff;
+}
+
+.speed-row.is-me .speed-name,
+.speed-row.is-me .speed-time,
+.speed-row.is-me .speed-place {
+  color: var(--purple);
+}
+
+/* 不在前五时，名单和"我"之间那行居中的省略号 */
+.speed-row.is-dots {
+  justify-content: center;
+  color: #c6c2d8;
+  font-weight: 900;
+}
+
+.speed-me {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: #f3f1ff;
+  color: var(--purple);
+  font-size: 14.5px;
+  font-weight: 900;
+}
+
+.speed-me.is-waiting {
+  background: #f5f4f9;
+  color: var(--muted);
+}
+
+/* 我在前五时这行不显示（flex 会盖掉 [hidden]，所以显式写一条） */
+.speed-me[hidden] {
+  display: none;
+}
+
+.speed-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #f2f1f8;
+  color: #7c7896;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .cls-level[data-level="1"],
 .cls-level[data-level="3"] {
   width: calc(100% - 60px);
