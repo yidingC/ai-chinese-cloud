@@ -602,7 +602,7 @@
     });
 
     /* ⚡ 那粒钮贴着卡片的右上角（卡片会左右错位，所以按实际位置算，3 关 5 关都不会跑偏） */
-    const BOARD_INSET = 28;
+    const BOARD_INSET = 25;
     const layoutBoardButtons = () => {
       levels.forEach((level) => {
         if (!level.row || !level.board) return;

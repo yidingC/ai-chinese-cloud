@@ -471,11 +471,11 @@
 .cls-level-board {
   position: absolute;
   z-index: 4;
-  top: 15px;
+  top: 14px;
   /* right 由 app.js 按卡片的右边缘算（卡片会左右错位，写死会跑偏） */
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   place-items: center;
   border: 0;
@@ -483,10 +483,11 @@
   background: rgba(255, 255, 255, 0.26);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 12px rgba(30, 18, 80, 0.22);
   color: #ffffff;
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1;
   cursor: pointer;
-  transition: transform .16s cubic-bezier(.2,.9,.3,1.3), background .16s ease;
+  /* 跟卡面用同一条缓动：按下卡面时，小闪电跟着一起沉下去 */
+  transition: transform .18s cubic-bezier(.2,.9,.3,1.25), background .16s ease;
 }
 
 .cls-level-board:active {
@@ -494,14 +495,25 @@
   background: rgba(255, 255, 255, 0.42);
 }
 
+/* 卡面按下（下沉 8px）时，小闪电跟着走；单独按小闪电仍然只缩一下自己 */
+.cls-level-row:has(.cls-level:active, .cls-level.is-pressed) .cls-level-board {
+  transform: translateY(8px);
+}
+
+/* 锁着的卡：入口跟卡片一起变淡（透明度和灰度跟卡片一致），别比卡面还显眼 */
+.cls-level-row:has(.cls-level[data-state="locked"]) .cls-level-board {
+  opacity: 0.55;
+  filter: grayscale(0.92);
+}
+
 /* ?icon=word 时的"榜"字版（照试稿留的对比口子） */
 .cls-level-board.is-word {
-  background: rgba(255, 255, 255, 0.36);
+  background: rgba(255, 255, 255, 0.32);
   color: #5f49e8;
 }
 
 .cls-level-board-icon.is-word {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 900;
 }
 
