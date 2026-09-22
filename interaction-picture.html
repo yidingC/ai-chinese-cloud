@@ -25,23 +25,27 @@
     </header>
 
     <main class="page page-content">
-      <section class="picture-card" data-picture-card aria-labelledby="picture-question">
-        <div class="picture-stem">
-          <p class="picture-pinyin" data-picture-pinyin>Zhè shì shénme?</p>
-          <h3 class="picture-question" id="picture-question" data-picture-question>这是什么？</h3>
-        </div>
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="picture-stage">
+        <section class="picture-card" data-picture-card aria-labelledby="picture-question">
+          <div class="picture-stem">
+            <p class="picture-pinyin" data-picture-pinyin>Zhè shì shénme?</p>
+            <h3 class="picture-question" id="picture-question" data-picture-question>这是什么？</h3>
+          </div>
 
-        <figure class="picture-figure">
-          <div class="picture-slot" data-picture-slot></div>
-        </figure>
+          <figure class="picture-figure">
+            <div class="picture-slot" data-picture-slot></div>
+          </figure>
 
-        <div class="picture-options" role="group" aria-labelledby="picture-question" data-picture-options></div>
+          <div class="picture-options" role="group" aria-labelledby="picture-question" data-picture-options></div>
 
-        <button type="button" class="primary-button picture-submit btn-stacked" data-picture-submit disabled>
-          <span data-picture-submit-label>提交</span>
-          <span class="btn-id" lang="id" data-picture-submit-label-id>Kirim</span>
-        </button>
+          <button type="button" class="primary-button picture-submit btn-stacked" data-picture-submit disabled>
+            <span data-picture-submit-label>提交</span>
+            <span class="btn-id" lang="id" data-picture-submit-label-id>Kirim</span>
+          </button>
+        </section>
 
+        <!-- 回执条：卡片的下一层兄弟。未提交时 hidden；提交后从卡片底下滑出 -->
         <div class="picture-feedback hidden" role="status" aria-live="polite" tabindex="-1" data-picture-feedback>
           <strong class="picture-feedback-title">
             <span aria-hidden="true" data-picture-feedback-icon></span>
@@ -49,7 +53,7 @@
           </strong>
           <p class="picture-feedback-answer hidden" data-picture-feedback-answer></p>
         </div>
-      </section>
+      </div>
 
       <p class="picture-announcer" role="status" aria-live="polite" data-activity-status>当前状态：待作答</p>
     </main>

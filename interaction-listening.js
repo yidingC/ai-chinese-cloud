@@ -1,8 +1,9 @@
 /* 听音选图/选词 · interaction-listening.html 页面脚本（占位版）
    状态机：待作答 → 播放中 → 已选择 → 已提交 → 正确 / 错误（每题只判一次）。
    判分是真的：按题目数据里标了 correct 的那一项判，选对才算对。
-   对错只靠整块颜色表达（对＝选中的块变绿 + 一个小绿 ✓；错＝选中的块变红、正确的块变绿），
-   页面不写任何解释文字；读屏只播「答对了 / 再想想」。
+   对错只靠整块颜色表达（对＝选中的块变绿 + 一个课堂页同款的小绿勾；错＝选中的块变红、正确的块变绿），
+   页面不写解释文字（只有卡片底下滑出的回执条报"正确答案是什么"）；
+   读屏播「答对了 / 再想想 + 刚才听到的是：三，sān，tiga」。
    播放是假的：不发出声音、不碰麦克风；题目数据里的 audio 一旦填上真实路径，
    同一个播放按钮就走 <audio> 真播放，页面代码不用重写。
    进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并调用 finish()。 */
@@ -10,7 +11,7 @@
   "use strict";
 
   const LETTERS = ["A", "B", "C", "D", "E", "F"];
-  const FAKE_PLAY_MS = 1000;          // 占位播放：按钮「播放中…」保持 1 秒
+  const FAKE_PLAY_MS = 1000;          // 占位播放：圆钮保持播放态 1 秒（屏幕不写字）
   const SOLO_MODAL_DELAY = 2000;      // 体验模式：提交后留多久看颜色结果，再弹完成弹窗
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
@@ -24,6 +25,7 @@
     audio: "",
     audioText: "三",
     pinyin: "sān",
+    meaningId: "tiga",
     options: [
       { text: "三", pinyin: "sān", correct: true },
       { text: "四", pinyin: "sì" },
@@ -49,16 +51,26 @@
     if (node) node.textContent = text;
   }
 
+  function setHidden(node, hidden) {
+    if (node) node.classList.toggle("hidden", !!hidden);
+  }
+
   function cache() {
     el.prompt = document.querySelector("[data-listening-prompt]");
     el.play = document.querySelector("[data-listening-play]");
-    el.playLabel = document.querySelector("[data-listening-play-label]");
+
     el.audio = document.querySelector("[data-listening-audio]");
     el.options = document.querySelector("[data-listening-options]");
     el.submit = document.querySelector("[data-listening-submit]");
     el.submitLabel = document.querySelector("[data-listening-submit-label]");
     el.submitLabelId = document.querySelector("[data-listening-submit-label-id]");
     el.announcer = document.querySelector("[data-listening-announcer]");
+    el.receipt = document.querySelector("[data-listening-receipt]");
+    el.receiptText = document.querySelector("[data-listening-receipt-text]");
+    el.receiptRead = document.querySelector("[data-listening-receipt-read]");
+    el.receiptPinyin = document.querySelector("[data-listening-receipt-pinyin]");
+    el.receiptDot = document.querySelector("[data-listening-receipt-dot]");
+    el.receiptMeaning = document.querySelector("[data-listening-receipt-meaning]");
   }
 
   function activityBridge() {
@@ -103,22 +115,19 @@
     global.clearTimeout(playTimer);
   }
 
-  /* 回到「待播放」：不自动播放，按钮回到「听一听」 */
+  /* 回到「待播放」：不自动播放，圆钮回到紫色呼吸态（屏幕不写字） */
   function resetPlay() {
     clearPlayTimers();
     setPlaying(false);
-    setText(el.playLabel, "听一听");
     if (el.audio && !el.audio.paused && typeof el.audio.pause === "function") el.audio.pause();
   }
 
-  /* 假播放：不发出声音，只把按钮状态走一遍 */
+  /* 假播放：不发出声音，只把圆钮状态走一遍（呼吸 → 图标脉冲 → 呼吸），屏幕不写字 */
   function playPlaceholder() {
     setPlaying(true);
-    setText(el.playLabel, "播放中…");
     announce("播放中。");
     playTimer = global.setTimeout(function () {
       setPlaying(false);
-      setText(el.playLabel, "再听一次");
       announce("可以再听一次。");
     }, FAKE_PLAY_MS);
   }
@@ -131,7 +140,6 @@
       return;
     }
     setPlaying(true);
-    setText(el.playLabel, "播放中…");
     announce("播放中。");
     try {
       audio.currentTime = 0;
@@ -142,7 +150,6 @@
     if (started && typeof started.catch === "function") {
       started.catch(function () {
         setPlaying(false);
-        setText(el.playLabel, "再听一次");
       });
     }
   }
@@ -168,6 +175,30 @@
     })[0] || null;
   }
 
+  /* 回执条只报"正确答案是什么"：汉字 + 拼音 · 印尼语。
+     字段缺了就少报一段（退化成「汉字 · 拼音」），不留空占位符 */
+  function correctAnswerParts() {
+    const correct = correctOptionOf();
+    return {
+      text: correct ? correct.text : QUESTION.audioText || "",
+      pinyin: (correct && correct.pinyin) || "",
+      meaning: QUESTION.meaningId || ""
+    };
+  }
+
+  function showReceipt() {
+    if (!el.receipt) return;
+    const parts = correctAnswerParts();
+    setText(el.receiptText, parts.text);
+    setText(el.receiptPinyin, parts.pinyin);
+    setText(el.receiptMeaning, parts.meaning);
+    setHidden(el.receiptPinyin, !parts.pinyin);
+    setHidden(el.receiptDot, !(parts.pinyin && parts.meaning));
+    setHidden(el.receiptMeaning, !parts.meaning);
+    setHidden(el.receiptRead, !(parts.pinyin || parts.meaning));
+    setHidden(el.receipt, false);
+  }
+
   function paintSelection() {
     eachOptionButton(function (button, option) {
       const isSelected = option.id === selectedId;
@@ -188,16 +219,10 @@
       button.setAttribute("aria-pressed", "false");
       button.setAttribute("aria-label", "选项 " + option.letter + "：" + option.text);
 
-      const letter = document.createElement("span");
-      letter.className = "listening-letter";
-      letter.setAttribute("aria-hidden", "true");
-      letter.textContent = option.letter;
-
       const text = document.createElement("span");
       text.className = "listening-option-text";
       text.textContent = option.text;
 
-      button.appendChild(letter);
       button.appendChild(text);
       button.addEventListener("click", function () {
         selectOption(option.id);
@@ -268,7 +293,7 @@
     if (modal && typeof modal.close === "function") modal.close();
   }
 
-  /* 再练一次：关掉弹窗，重新开始本题（播放按钮回到「听一听」） */
+  /* 再练一次：关掉弹窗，重新开始本题（圆钮回到紫色呼吸态） */
   function restartQuestion() {
     closeModal();
     startQuestion();
@@ -284,7 +309,7 @@
     lastCorrect = !!correct && selectedId === correct.id;
     attempts += 1;
     const tier = lastCorrect ? (attempts === 1 ? "correctFirstTry" : "correct") : "wrong";
-    const praise = typeof copy.draw === "function" ? copy.draw(tier) : null;
+    const praise = typeof copy.draw === "function" ? copy.draw(tier, { single: true }) : null;
 
     lockOptions();
     if (el.submit) {
@@ -292,7 +317,10 @@
       setText(el.submitLabel, "已提交");
       setText(el.submitLabelId, "Terkirim");
     }
-    announce(lastCorrect ? "答对了" : "再想想");
+    showReceipt();
+    const answer = correctAnswerParts();
+    const spoken = [answer.text, answer.pinyin, answer.meaning].filter(Boolean).join("，");
+    announce((lastCorrect ? "答对了。" : "再想想。") + "刚才听到的是：" + spoken + "。");
 
     completeOnce();
     modalTimer = global.setTimeout(function () {
@@ -313,6 +341,7 @@
 
     setText(el.prompt, QUESTION.prompt);
     resetPlay();
+    setHidden(el.receipt, true);
     if (el.audio) {
       if (hasRealAudio()) el.audio.setAttribute("src", QUESTION.audio);
       else el.audio.removeAttribute("src");
@@ -344,11 +373,9 @@
       /* 真音频播完 / 播不动时，按钮状态照常回来 */
       el.audio.addEventListener("ended", function () {
         setPlaying(false);
-        setText(el.playLabel, "再听一次");
       });
       el.audio.addEventListener("error", function () {
         setPlaying(false);
-        setText(el.playLabel, "再听一次");
         announce("音频暂时无法播放。");
       });
     }

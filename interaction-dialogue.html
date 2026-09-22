@@ -25,33 +25,37 @@
     </header>
 
     <main class="page page-content">
-      <section class="dialogue-card" data-dialogue-card aria-label="对话补全">
-        <ul class="dialogue-thread" data-dialogue-thread>
-          <li class="dialogue-turn is-them">
-            <span class="dialogue-avatar" aria-hidden="true">🧑</span>
-            <div class="dialogue-turn-body">
-              <span class="dialogue-sr">对方说：</span>
-              <p class="dialogue-bubble" data-dialogue-them data-dialogue-them-id="Permisi, di mana kamar kecilnya?">请问，洗手间在哪儿？</p>
-            </div>
-          </li>
-          <li class="dialogue-turn is-me">
-            <div class="dialogue-turn-body">
-              <span class="dialogue-sr">我说：</span>
-              <div class="dialogue-me-row">
-                <p class="dialogue-bubble is-placeholder" data-dialogue-me aria-live="polite">？</p>
-                <span class="dialogue-mark hidden" data-dialogue-mark aria-hidden="true">✓</span>
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="dialogue-stage">
+        <section class="dialogue-card" data-dialogue-card aria-label="对话补全">
+          <ul class="dialogue-thread" data-dialogue-thread>
+            <li class="dialogue-turn is-them">
+              <span class="dialogue-avatar" aria-hidden="true">🧑</span>
+              <div class="dialogue-turn-body">
+                <span class="dialogue-sr">对方说：</span>
+                <p class="dialogue-bubble" data-dialogue-them data-dialogue-them-id="Permisi, di mana kamar kecilnya?">请问，洗手间在哪儿？</p>
               </div>
-            </div>
-          </li>
-        </ul>
+            </li>
+            <li class="dialogue-turn is-me">
+              <div class="dialogue-turn-body">
+                <span class="dialogue-sr">我说：</span>
+                <div class="dialogue-me-row">
+                  <p class="dialogue-bubble is-placeholder" data-dialogue-me aria-live="polite">？</p>
+                  <span class="dialogue-mark hidden" data-dialogue-mark aria-hidden="true">✓</span>
+                </div>
+              </div>
+            </li>
+          </ul>
 
-        <div class="dialogue-options" role="group" aria-label="选出合适的下一句" data-dialogue-options></div>
+          <div class="dialogue-options" role="group" aria-label="选出合适的下一句" data-dialogue-options></div>
 
-        <button type="button" class="primary-button dialogue-submit btn-stacked" data-dialogue-submit disabled>
-          <span data-dialogue-submit-label>提交</span>
-          <span class="btn-id" lang="id" data-dialogue-submit-label-id>Kirim</span>
-        </button>
+          <button type="button" class="primary-button dialogue-submit btn-stacked" data-dialogue-submit disabled>
+            <span data-dialogue-submit-label>提交</span>
+            <span class="btn-id" lang="id" data-dialogue-submit-label-id>Kirim</span>
+          </button>
+        </section>
 
+        <!-- 回执条：卡片的下一层兄弟。未提交时 hidden；提交后从卡片底下滑出 -->
         <div class="dialogue-feedback hidden" role="status" aria-live="polite" tabindex="-1" data-dialogue-feedback>
           <strong class="dialogue-feedback-title hidden" data-dialogue-feedback-title-row>
             <span aria-hidden="true" data-dialogue-feedback-icon></span>
@@ -68,7 +72,7 @@
             </p>
           </div>
         </div>
-      </section>
+      </div>
 
       <p class="dialogue-sr" role="status" aria-live="polite" data-activity-status>当前状态：待作答</p>
     </main>

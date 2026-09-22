@@ -261,7 +261,7 @@
     attempts += 1;
     settlePictureMove(lastCorrect);
     const tier = lastCorrect ? (attempts === 1 ? "correctFirstTry" : "correct") : "wrong";
-    const praise = typeof copy.draw === "function" ? copy.draw(tier) : null;
+    const praise = typeof copy.draw === "function" ? copy.draw(tier, { single: true }) : null;
 
     eachOptionButton(function (button, option) {
       button.disabled = true;

@@ -1,9 +1,9 @@
 /* 拼音—汉字—含义匹配 · interaction-pinyin-match.html 页面脚本
    一屏一组、共 3 组，流程是「拼音 → 选汉字 → 选意思」：
-   ① 看拼音选汉字（步骤胶囊在题目牌里）→ 选对汉字（绿锁 + 勾轻弹 + 步骤②滑入）
-   → 选对意思（本组完成、收集槽填一格）→ 0.4 秒后自动进入下一组
-   → 三组完成 → 0.6 秒后弹公共中性弹窗。
-   页面不放说明文字：引导只交给两枚步骤胶囊；状态只做无障碍播报（视觉隐藏）。
+   ① 看拼音选汉字（步骤标签在题目牌里）→ 选对汉字（绿锁 + 勾轻弹 + 步骤②滑入）
+   → 选对意思（本组完成、收集槽填一格）→ 0.9 秒后自动进入下一组
+   → 三组完成 → 0.9 秒后弹公共中性弹窗。
+   页面不放说明文字：引导只交给两枚步骤标签；状态只做无障碍播报（视觉隐藏）。
    闯关式手感：选错只标红加抖动、原地重试、不显示正确答案，所以 correct 恒为 true。
    进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并调用 finish()。 */
 (function (global) {
@@ -40,8 +40,8 @@
 
   const TOTAL_GROUPS = GROUPS.length;
   const WRONG_RESET_DELAY = 720;      // 选错：红块和抖动保留 720ms 后复原，可以继续点
-  const ADVANCE_DELAY = 400;          // 本组完成后 0.4 秒自动进入下一组
-  const SOLO_MODAL_DELAY = 600;       // 体验模式：三组完成后约 0.6 秒弹完成弹窗
+  const ADVANCE_DELAY = 900;          // 本组完成后 0.9 秒自动进入下一组
+  const SOLO_MODAL_DELAY = 900;       // 三组全配好后等 0.9 秒再弹完成弹窗，让最后一组的 ✓ 被看见
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
@@ -236,7 +236,7 @@
     completeGroup(group);
   }
 
-  /* 一组配好：收集槽填一格，0.4 秒后自动进入下一组 */
+  /* 一组配好：收集槽填一格，0.9 秒后自动进入下一组 */
   function completeGroup(group) {
     completed.push(group);
     lockAllOptions();
@@ -296,7 +296,7 @@
   }
 
   /* 三组全部配好：全部锁定，调用 finish()（课堂模式记进度）；
-     两种模式都等 0.6 秒弹完成弹窗 */
+     两种模式都等 0.9 秒弹完成弹窗 */
   function finishBoard() {
     lockAllOptions();
     lastSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));

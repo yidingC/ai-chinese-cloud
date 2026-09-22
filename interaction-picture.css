@@ -35,7 +35,8 @@
 
   /* 字号 */
   --text-question: 23px;
-  --text-option: 15px;
+  /* 选项主字：本页只服务 .picture-option-text —— 第十节「可点字块里的汉字 ≥20px（基准 22px）」 */
+  --text-option: 22px;
   --text-button: 17px;
 
   /* 动效 */
@@ -79,7 +80,14 @@
 }
 
 /* ---------- 题面卡 ---------- */
+/* 卡片 + 回执条：条是卡片的下一层，平时整条压在卡片下沿后面 */
+.picture-stage {
+  position: relative;
+}
+
 .picture-card {
+  position: relative;
+  z-index: 1;
   padding: 18px 16px 16px;
   border: 2px solid var(--line-card);
   border-radius: var(--radius-card);
@@ -241,16 +249,11 @@
 
 .picture-option.correct::after {
   flex: 0 0 auto;
-  display: grid;
   width: 22px;
   height: 22px;
-  place-items: center;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 900;
-  content: "✓";
-  background: var(--answer-correct);
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   animation: picturePop var(--dur-pop) var(--ease-pop);
 }
 
@@ -294,15 +297,21 @@
   cursor: not-allowed;
 }
 
-/* ---------- 结果条：结果出场；框里只写事实 ---------- */
+/* ---------- 结果条：从卡片下沿滑出的回执条（最上面 13px 压在卡底下）；框里只写事实 ---------- */
 .picture-feedback {
-  margin-top: 15px;
-  padding: 15px 16px;
-  border: 2px solid transparent;
-  border-radius: var(--radius-option);
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 30px 18px 16px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: none;
   font-size: 12px;
   line-height: 1.6;
-  animation: pictureFeedbackIn var(--dur-enter) var(--ease-enter);
+  animation: pictureReceiptIn .28s ease-out both;
 }
 
 .picture-feedback:focus {
@@ -310,16 +319,12 @@
 }
 
 .picture-feedback.is-correct {
-  border-color: #a9e8d3;
-  background: #e8fbf3;
-  box-shadow: 0 4px 0 #d3f2e7;
+  background: #d4f3e9;
 }
 
 /* 框里装的是正确词的意思，不是错误提示：用中性紫，不用红 */
 .picture-feedback.is-wrong {
-  border-color: #d9d3ee;
-  background: var(--select-fill);
-  box-shadow: 0 4px 0 #dad4f0;
+  background: #d9ceff;
 }
 
 .picture-feedback-title {
@@ -332,6 +337,17 @@
 
 .picture-feedback.is-correct .picture-feedback-title { color: var(--answer-correct-text); }
 
+/* 结果条里的行内小勾：同一支笔（15px），颜色跟着这一行；不是"答对"时不占位 */
+.picture-feedback-title [data-picture-feedback-icon]:not(:empty) {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  font-size: 0;
+  background: currentColor;
+  -webkit-mask: var(--check-pen) center / contain no-repeat;
+  mask: var(--check-pen) center / contain no-repeat;
+}
+
 .picture-feedback-answer {
   margin: 7px 0 0;
   color: var(--text-quiet);
@@ -343,8 +359,9 @@
 .picture-feedback.is-wrong .picture-feedback-answer { margin-top: 0; }
 
 /* ---------- 关键帧 ---------- */
-@keyframes pictureFeedbackIn {
-  from { opacity: 0; transform: translateY(10px); }
+/* 回执条：从卡片底下往下滑 30px 到位 */
+@keyframes pictureReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -379,5 +396,6 @@
   .picture-question { font-size: 18px; }
   .picture-slot-emoji { font-size: 80px; }
   .picture-option { min-height: 56px; }
-  .picture-option-text { font-size: 13px; }
+  /* 窄屏不缩字：一行放不下就换行 */
+  .picture-option-text { font-size: 20px; }
 }

@@ -3,11 +3,26 @@
    primary-button / secondary-button）全部复用 styles.css，
    这里只写本页面自己的部件：题型卡片、待归类词池、类别框、词块、反馈区。 */
 
+/* 答对的绿：与其它题型页同一套（尺子＝听音选词那颗勾）。
+   --success 是课堂页 / 平台的颜色，题型页不许拿它当答对色。 */
+:root {
+  --answer-correct: #1fbf8f;
+  --answer-correct-fill: #e8fbf3;
+  --answer-correct-edge: #a9e8d3;
+}
+
 .page-content {
   padding-bottom: 190px;
 }
 
+/* 卡片 + 回执条：条是卡片的下一层，平时整条压在卡片下沿后面 */
+.category-stage {
+  position: relative;
+}
+
 .category-card {
+  position: relative;
+  z-index: 1;
   padding: 16px 15px;
   border-radius: 24px;
   background: #ffffff;
@@ -86,14 +101,14 @@
 }
 
 .category-chip strong {
-  font-size: 14px;
+  font-size: 22px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .category-chip small {
   color: var(--muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -114,7 +129,7 @@
 /* 印尼语意思：斜体 + 更浅的灰 + 小一号，和拼音一眼分得开 */
 .category-chip-id {
   color: #a7a1bd;
-  font-size: 9px;
+  font-size: 10px;
   font-style: italic;
   font-weight: 600;
 }
@@ -144,8 +159,8 @@
 }
 
 .category-chip.is-correct {
-  border-color: rgba(34, 173, 131, 0.55);
-  background: #e9faf4;
+  border-color: var(--answer-correct);
+  background: var(--answer-correct-fill);
   box-shadow: none;
 }
 
@@ -292,7 +307,7 @@
 }
 
 .category-group-items .category-chip strong {
-  font-size: 13px;
+  font-size: 22px;
 }
 
 .category-actions {
@@ -351,13 +366,21 @@
   cursor: not-allowed;
 }
 
+/* 结果条：从卡片下沿滑出的回执条（最上面 13px 压在卡底下） */
 .category-feedback {
-  margin-top: 13px;
-  padding: 13px 14px;
-  border: 1.5px solid transparent;
-  border-radius: 18px;
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 30px 18px 16px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: none;
   font-size: 11px;
   line-height: 1.6;
+  animation: categoryReceiptIn .28s ease-out both;
 }
 
 .category-feedback:focus {
@@ -365,15 +388,17 @@
 }
 
 .category-feedback.is-correct {
-  border-color: rgba(34, 173, 131, 0.32);
-  background: #e9faf4;
-  box-shadow: 0 4px 0 #d3f2e7;
+  background: #d4f3e9;
 }
 
 .category-feedback.is-wrong {
-  border-color: #d9d3ee;
-  background: #f1eeff;
-  box-shadow: 0 4px 0 #dad4f0;
+  background: #d9ceff;
+}
+
+/* 回执条：从卡片底下往下滑 30px 到位 */
+@keyframes categoryReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
+  to { opacity: 1; transform: none; }
 }
 
 .category-feedback-title {
@@ -421,8 +446,18 @@
     font-size: 18px;
   }
 
+  /* 窄屏不缩字：一行放不下就换行（块下限 66px 不动） */
   .category-chip strong {
-    font-size: 13px;
+    font-size: 20px;
+  }
+
+  .category-chip small {
+    font-size: 10px;
+  }
+
+  /* 组里的小块优先级更高，窄屏也走 20px，别停在 22px */
+  .category-group-items .category-chip strong {
+    font-size: 20px;
   }
 
   .category-group-name {

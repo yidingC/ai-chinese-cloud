@@ -25,29 +25,33 @@
     </header>
 
     <main class="page page-content">
-      <section class="category-card" aria-labelledby="category-prompt">
-        <div class="category-prompt-block">
-          <h3 class="category-prompt" id="category-prompt"><span aria-hidden="true">🐼</span>把下面的词放进对应的类别里吧！</h3>
-          <p class="category-prompt-id" lang="id">Ayo, kelompokkan kata-kata di bawah ini ke kategori yang tepat!</p>
-        </div>
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="category-stage">
+        <section class="category-card" aria-labelledby="category-prompt">
+          <div class="category-prompt-block">
+            <h3 class="category-prompt" id="category-prompt"><span aria-hidden="true">🐼</span>把下面的词放进对应的类别里吧！</h3>
+            <p class="category-prompt-id" lang="id">Ayo, kelompokkan kata-kata di bawah ini ke kategori yang tepat!</p>
+          </div>
 
-        <div class="category-pool-block">
-          <div class="category-pool" role="group" aria-label="待归类的词" data-category-pool></div>
-        </div>
+          <div class="category-pool-block">
+            <div class="category-pool" role="group" aria-label="待归类的词" data-category-pool></div>
+          </div>
 
-        <div class="category-groups" data-category-groups></div>
+          <div class="category-groups" data-category-groups></div>
 
-        <div class="category-actions">
-          <button type="button" class="secondary-button btn-stacked" data-category-reset>
-            <span data-category-reset-label>重置</span>
-            <span class="btn-id" lang="id">Ulangi</span>
-          </button>
-          <button type="button" class="primary-button btn-stacked" data-category-submit disabled>
-            <span data-category-submit-label>提交</span>
-            <span class="btn-id" lang="id" data-category-submit-label-id>Kirim</span>
-          </button>
-        </div>
+          <div class="category-actions">
+            <button type="button" class="secondary-button btn-stacked" data-category-reset>
+              <span data-category-reset-label>重置</span>
+              <span class="btn-id" lang="id">Ulangi</span>
+            </button>
+            <button type="button" class="primary-button btn-stacked" data-category-submit disabled>
+              <span data-category-submit-label>提交</span>
+              <span class="btn-id" lang="id" data-category-submit-label-id>Kirim</span>
+            </button>
+          </div>
+        </section>
 
+        <!-- 回执条：卡片的下一层兄弟。未提交时 hidden；提交后从卡片底下滑出 -->
         <div class="category-feedback hidden" role="status" aria-live="polite" tabindex="-1" data-category-feedback>
           <strong class="category-feedback-title">
             <span data-category-feedback-title></span>
@@ -55,7 +59,7 @@
             <span class="category-feedback-title-id" lang="id" data-category-feedback-title-id></span>
           </strong>
         </div>
-      </section>
+      </div>
 
       <p class="category-announcer" role="status" aria-live="polite" data-category-announcer></p>
     </main>

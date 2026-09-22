@@ -2,7 +2,7 @@
    尺子与黄金样板 interaction-choice.css 对齐：顶部变量整块照抄，不自造颜色 / 厚度 / 时长。
    词块按《视觉打磨规范》第十节 B 档（66px）全套：标点块是唯一例外——宽度不受 66px 约束、
    跟着前一个词一起换行，但高度、圆角、描边、投影与其他字块完全一致，同一行里垂直居中。
-   页面只说事实：句子、对错、改好的整句。动效只做三样：按下 150ms / 结果出场 260ms / 答错轻晃。 */
+   页面只说事实：题面、句子、对错、改好的整句。动效只做三样：按下 150ms / 结果出场 260ms / 答错轻晃。 */
 
 :root {
   /* 颜色 */
@@ -35,7 +35,9 @@
 
   /* 字号 */
   --text-question: 23px;
-  --text-option: 15px;
+  /* 词块主字：本页没有单独的「选项按钮」，这个变量只服务词块——
+     按第十节「可点字块里的汉字 ≥20px（基准 22px）」，不留 15px 等人误用。 */
+  --text-option: 22px;
   --text-button: 17px;
 
   /* 动效 */
@@ -66,7 +68,14 @@
 .header-subtitle { color: var(--text-subtle); }
 
 /* ---------- 题面卡片：卡里只有句子、提交、结果条 ---------- */
+/* 卡片 + 回执条：条是卡片的下一层，平时整条压在卡片下沿后面 */
+.correction-stage {
+  position: relative;
+}
+
 .correction-card {
+  position: relative;
+  z-index: 1;
   padding: 18px 16px 16px;
   border: 2px solid var(--line-card);
   border-radius: var(--radius-card);
@@ -74,17 +83,28 @@
   box-shadow: 0 6px 0 #e6e3ef, 0 22px 40px rgba(71, 57, 142, 0.08);
 }
 
-/* 题面（说明）只给读屏，视觉上不占地方 */
-.correction-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  border: 0;
-  white-space: nowrap;
+/* ---------- 题面：句子框正上方的一行，中文 14px + 印尼语小字 11px，
+   两行都用本页已有的次级文字灰；也是卡片与句子组的无障碍标题 ---------- */
+.correction-prompt-block {
+  margin-bottom: 10px;
+}
+
+.correction-prompt {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.correction-prompt-id {
+  margin: 1px 0 0;
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- 句子底框（浅紫）：词块横排、可换行，一行里各块垂直居中 ---------- */
@@ -115,8 +135,8 @@
   gap: 2px;
   /* 任何词块不窄于 66px，长词自然变宽，不逐词特判 */
   min-width: 66px;
-  min-height: 64px;
-  padding: 8px 14px;
+  min-height: 68px;
+  padding: 10px 14px;
   border: 2px solid var(--line-soft);
   border-radius: var(--radius-option);
   background: #ffffff;
@@ -134,7 +154,7 @@
 
 .correction-word-pinyin {
   color: var(--text-subtle);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   line-height: 1.2;
   white-space: nowrap;
@@ -228,15 +248,22 @@
   cursor: not-allowed;
 }
 
-/* ---------- 结果条：对＝绿框，错＝中性紫框（框里装的是正确答案，不是错误提示） ---------- */
+/* ---------- 结果条：从卡片下沿滑出的回执条（最上面 13px 压在卡底下）；
+   对＝绿条，错＝中性紫条（条里装的是正确答案，不是错误提示） ---------- */
 .correction-feedback {
-  margin-top: 15px;
-  padding: 15px 16px;
-  border: 2px solid transparent;
-  border-radius: var(--radius-option);
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 30px 18px 16px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: none;
   font-size: 12px;
   line-height: 1.6;
-  animation: correctionFeedbackIn var(--dur-enter) var(--ease-enter);
+  animation: correctionReceiptIn .28s ease-out both;
 }
 
 .correction-feedback:focus {
@@ -244,15 +271,11 @@
 }
 
 .correction-feedback.is-correct {
-  border-color: #a9e8d3;
-  background: #e8fbf3;
-  box-shadow: 0 4px 0 #d3f2e7;
+  background: #d4f3e9;
 }
 
 .correction-feedback.is-wrong {
-  border-color: #d9d3ee;
-  background: var(--select-fill);
-  box-shadow: 0 4px 0 #dad4f0;
+  background: #d9ceff;
 }
 
 .correction-feedback-title {
@@ -265,6 +288,17 @@
 
 .correction-feedback.is-correct .correction-feedback-title {
   color: var(--answer-correct-text);
+}
+
+/* 结果条里的行内小勾：同一支笔（15px），颜色跟着这一行；不是"答对"时不占位 */
+.correction-feedback-title [data-correction-feedback-icon]:not(:empty) {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  font-size: 0;
+  background: currentColor;
+  -webkit-mask: var(--check-pen) center / contain no-repeat;
+  mask: var(--check-pen) center / contain no-repeat;
 }
 
 /* 改好的整句：结果条里最重的一行 */
@@ -318,19 +352,25 @@
 }
 
 /* ---------- 关键帧 ---------- */
-@keyframes correctionFeedbackIn {
-  from { opacity: 0; transform: translateY(10px); }
+/* 回执条：从卡片底下往下滑 30px 到位 */
+@keyframes correctionReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
   to { opacity: 1; transform: none; }
 }
 
 @media (max-width: 360px) {
+  /* 窄屏不缩字：一行放不下就换行（块下限 66px 不动） */
   .correction-word {
-    min-height: 56px;
-    padding: 6px 12px;
+    min-height: 64px;
+    padding: 8px 12px;
   }
 
   .correction-word-text {
-    font-size: 13px;
+    font-size: 20px;
+  }
+
+  .correction-word-pinyin {
+    font-size: 10px;
   }
 
   .correction-feedback-sentence {

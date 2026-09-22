@@ -25,29 +25,44 @@
     </header>
 
     <main class="page page-content">
-      <section class="listening-card" aria-labelledby="listening-prompt">
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="listening-stage">
+        <section class="listening-card" aria-labelledby="listening-prompt">
 
-        <!-- 题面只说给读屏听：页面上让大按钮「🔊 听一听」自己说话 -->
-        <p class="listening-sr" id="listening-prompt" data-listening-prompt>听一听，选出你听到的</p>
+          <!-- 题面只说给读屏听：页面上让大按钮「🔊 听一听」自己说话 -->
+          <p class="listening-sr" id="listening-prompt" data-listening-prompt>听一听，选出你听到的</p>
 
-        <div class="listening-player">
-          <button type="button" class="listening-play" data-listening-play>
-            <span class="listening-play-circle">
-              <span class="listening-play-icon" aria-hidden="true">🔊</span>
-            </span>
-            <span class="listening-play-label" data-listening-play-label>听一听</span>
+          <div class="listening-player">
+            <button type="button" class="listening-play" data-listening-play aria-label="听一听">
+              <span class="listening-play-circle">
+                <span class="listening-play-icon" aria-hidden="true">🔊</span>
+              </span>
+            </button>
+            <!-- 占位：src 由题目数据的 audio 字段填入，填上真实录音路径就能真播 -->
+            <audio data-listening-audio preload="none"></audio>
+          </div>
+
+          <div class="listening-options" role="group" aria-labelledby="listening-prompt" data-listening-options></div>
+
+          <button type="button" class="primary-button listening-submit btn-stacked" data-listening-submit disabled>
+            <span data-listening-submit-label>提交</span>
+            <span class="btn-id" lang="id" data-listening-submit-label-id>Kirim</span>
           </button>
-          <!-- 占位：src 由题目数据的 audio 字段填入，填上真实录音路径就能真播 -->
-          <audio data-listening-audio preload="none"></audio>
+        </section>
+
+        <!-- 回执条：卡片的下一层兄弟。未提交时 hidden；提交后从卡片底下滑出，只报"正确答案是什么"，
+             对错都由完成弹窗说，这条不重复鼓励、不放图标 -->
+        <div class="listening-receipt hidden" data-listening-receipt>
+          <p class="listening-receipt-line">
+            <span class="listening-receipt-text" data-listening-receipt-text></span>
+            <span class="listening-receipt-read" data-listening-receipt-read>
+              <span class="listening-receipt-pinyin" data-listening-receipt-pinyin></span>
+              <i class="listening-receipt-dot" aria-hidden="true" data-listening-receipt-dot>·</i>
+              <span class="listening-receipt-meaning" lang="id" data-listening-receipt-meaning></span>
+            </span>
+          </p>
         </div>
-
-        <div class="listening-options" role="group" aria-labelledby="listening-prompt" data-listening-options></div>
-
-        <button type="button" class="primary-button listening-submit btn-stacked" data-listening-submit disabled>
-          <span data-listening-submit-label>提交</span>
-          <span class="btn-id" lang="id" data-listening-submit-label-id>Kirim</span>
-        </button>
-      </section>
+      </div>
 
       <p class="listening-announcer" data-listening-announcer role="status" aria-live="polite"></p>
     </main>

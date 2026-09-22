@@ -26,9 +26,9 @@
   --edge-active-w: 4px;
   --press-option: 2px;
 
-  /* 字号（第一节尺子：主字 15/900、小字 10/900） */
-  --text-option: 15px;
-  --text-option-note: 10px;
+  /* 字号（词块尺子：主字 22/900、小字 11/900 —— 第十节「可点字块里的汉字 ≥20px（基准 22px）」） */
+  --text-option: 22px;
+  --text-option-note: 11px;
 
   /* 动效 */
   --dur-press: .15s;
@@ -108,19 +108,14 @@
 }
 
 .match-item.correct::after {
-  content: "✓";
   position: absolute;
   top: -7px;
   right: -7px;
-  display: grid;
   width: 22px;
   height: 22px;
-  place-items: center;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  background: var(--answer-correct);
-  font-size: 12px;
-  font-weight: 900;
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   box-shadow: none;
   animation: matchCheckPop var(--dur-pop) var(--ease-pop);
 }
@@ -185,7 +180,12 @@
 
 /* ≤360px 窄屏：主字按第一节降一档 */
 @media (max-width: 360px) {
+  /* 窄屏不缩字：一行放不下就换行（块下限 66px 不动） */
   .match-item strong {
-    font-size: 13px;
+    font-size: 20px;
+  }
+
+  .match-item span {
+    font-size: 10px;
   }
 }

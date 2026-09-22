@@ -26,7 +26,14 @@
   padding-bottom: 190px;
 }
 
+/* 卡片 + 回执条：条是卡片的下一层，平时整条压在卡片下沿后面 */
+.dialogue-stage {
+  position: relative;
+}
+
 .dialogue-card {
+  position: relative;
+  z-index: 1;
   padding: 16px 15px;
   border-radius: 24px;
   background: #ffffff;
@@ -128,15 +135,10 @@
 /* 答对：气泡旁勾徽章轻弹（答错不打叉，红色气泡自己说明） */
 .dialogue-mark {
   flex: 0 0 auto;
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  color: #ffffff;
-  background: var(--answer-correct);
-  font-size: 14px;
-  font-weight: 900;
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   animation: dialoguePop var(--dur-pop) var(--ease-pop);
 }
 
@@ -195,7 +197,8 @@
 .dialogue-option-text {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 15px;
+  /* 长句选项：单独一档 18px（不拉到词块的 22px） */
+  font-size: 18px;
   font-weight: 900;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -237,19 +240,11 @@
 
 .dialogue-option.correct::after {
   flex: 0 0 auto;
-  display: grid;
   width: 22px;
   height: 22px;
-  place-items: center;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.dialogue-option.correct::after {
-  content: "✓";
-  background: var(--answer-correct);
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   animation: dialoguePop var(--dur-pop) var(--ease-pop);
 }
 
@@ -278,15 +273,21 @@
   cursor: not-allowed;
 }
 
-/* ---------- 结果条 ---------- */
+/* ---------- 结果条：从卡片下沿滑出的回执条（最上面 13px 压在卡底下） ---------- */
 .dialogue-feedback {
-  margin-top: 15px;
-  padding: 15px 16px;
-  border: 2px solid transparent;
-  border-radius: 20px;
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 30px 18px 16px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: none;
   font-size: 12px;
   line-height: 1.6;
-  animation: dialogueFeedbackIn var(--dur-enter) var(--ease-enter);
+  animation: dialogueReceiptIn .28s ease-out both;
 }
 
 .dialogue-feedback:focus {
@@ -294,15 +295,12 @@
 }
 
 .dialogue-feedback.is-correct {
-  border-color: #a9e8d3;
-  background: #e8fbf3;
-  box-shadow: 0 4px 0 #d3f2e7;
+  background: #d4f3e9;
 }
 
+/* 这一页的错仍用自己的粉，只把厚度拍平 */
 .dialogue-feedback.is-wrong {
-  border-color: #f8c3c7;
-  background: var(--answer-wrong-fill);
-  box-shadow: 0 4px 0 #fbdde0;
+  background: #fbd4d7;
 }
 
 .dialogue-feedback-title {
@@ -315,6 +313,17 @@
 
 .dialogue-feedback.is-correct .dialogue-feedback-title {
   color: var(--answer-correct-text);
+}
+
+/* 结果条里的行内小勾：同一支笔（15px），颜色跟着这一行；不是"答对"时不占位 */
+.dialogue-feedback-title [data-dialogue-feedback-icon]:not(:empty) {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  font-size: 0;
+  background: currentColor;
+  -webkit-mask: var(--check-pen) center / contain no-repeat;
+  mask: var(--check-pen) center / contain no-repeat;
 }
 
 .dialogue-feedback.is-wrong .dialogue-feedback-title {
@@ -353,8 +362,9 @@
   font-size: 14px;
 }
 
-@keyframes dialogueFeedbackIn {
-  from { opacity: 0; transform: translateY(10px); }
+/* 回执条：从卡片底下往下滑 30px 到位 */
+@keyframes dialogueReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -390,6 +400,6 @@
   }
 
   .dialogue-option-text {
-    font-size: 13px;
+    font-size: 16px;
   }
 }

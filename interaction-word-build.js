@@ -156,7 +156,6 @@
         const badge = document.createElement("span");
         badge.className = "word-slot-badge";
         badge.setAttribute("aria-hidden", "true");
-        badge.textContent = "✓";
         button.appendChild(badge);
       }
       button.setAttribute("aria-label", right

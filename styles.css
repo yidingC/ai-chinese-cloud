@@ -22,6 +22,15 @@
   --radius-xl: 28px;
   --radius-lg: 22px;
   --radius-md: 16px;
+
+  /* 全站唯一一支"对勾笔"（与课堂页 app.js 的 CHECK_ICON 同一支笔：24 viewBox / 圆头圆尾 / stroke 3.6）。
+     用法一（徽章）——画在彩色圆上当背景图：
+       background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
+       （绿圆 22px + 白勾 18px，就是听音选词那颗，全站都照这个尺子。）
+     用法二（行内小勾）——当 mask 配合 currentColor 换色：
+       background: currentColor; mask: var(--check-pen) center / contain no-repeat;
+     要改笔形，只改这里一处；各页不许自创第二种勾。 */
+  --check-pen: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.4 12.9l4.4 4.4L18.7 7.9'/%3E%3C/svg%3E");
 }
 
 * {
@@ -790,23 +799,6 @@ a:focus-visible {
   border-color: rgba(34, 173, 131, 0.55);
   background: #e9faf4;
   cursor: default;
-}
-
-.match-item.correct::after {
-  content: "✓";
-  position: absolute;
-  top: -7px;
-  right: -7px;
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border-radius: 50%;
-  color: #ffffff;
-  background: var(--success);
-  font-size: 12px;
-  font-weight: 900;
-  box-shadow: 0 5px 10px rgba(34,173,131,.24);
 }
 
 .match-item.wrong {

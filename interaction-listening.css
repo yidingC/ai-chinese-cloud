@@ -1,7 +1,7 @@
 /* 听音选图/选词（占位版）· interaction-listening.html 专用样式
    本页只有一个"说话的人"：大按钮「🔊 听一听」——没有题干块、没有说明行。
    尺子与黄金样板 interaction-choice.css 对齐：顶部变量整块照抄，不自造颜色 / 厚度 / 时长。
-   选项按《视觉打磨规范》第十一节五件事；对错只靠整块颜色 + 一个绿 ✓，不写解释文字。
+   选项按《视觉打磨规范》第十一节五件事；对错只靠整块颜色 + 一个绿勾（笔形同课堂页 CHECK_ICON），不写解释文字。
    动效只做这几样：按下 150ms、答对勾轻弹 300ms、答错轻晃（公共 shake）、播放中图标脉冲；
    常驻的只有一样——待作答时圆里的喇叭图标轻轻呼吸（只缩图标，圆钮本体不动）。 */
 
@@ -80,8 +80,15 @@
   white-space: nowrap;
 }
 
-/* ---------- 卡片：第 1 / 1 题 → 大播放按钮 → 选项 → 提交 ---------- */
+/* ---------- 卡片 + 回执条：回执条是卡片的下一层兄弟（定位上下文在这里） ---------- */
+.listening-stage {
+  position: relative;
+}
+
+/* ---------- 卡片：大播放按钮 → 选项 → 提交（压在回执条上面） ---------- */
 .listening-card {
+  position: relative;
+  z-index: 1;
   padding: 18px 16px 16px;
   border: 2px solid var(--line-card);
   border-radius: var(--radius-card);
@@ -89,18 +96,77 @@
   box-shadow: 0 6px 0 #e6e3ef, 0 22px 40px rgba(71, 57, 142, 0.08);
 }
 
-/* ---------- 大圆钮：这页唯一"说话的人"，也是页面主角 ---------- */
-.listening-player {
-  margin-bottom: 16px;
-  text-align: center;
+/* ---------- 回执条：只报"正确答案是什么"，对错都交给完成弹窗 ----------
+   位置：绝对定位在卡片下沿，往上压进 13px（那段被卡片吃掉）——不占位、不留空隙；
+   卡片 z-index 更高，滑出的全过程都被卡片下沿压着（能看见字被压掉半截）。
+   形状：扁平一张纸条——无厚度、无阴影、无描边，只有下方两个圆角。
+   出场：从卡片底下往下滑 30px，滑到位就停；减弱动态效果由公共层兜底（直接出现，不滑）。 */
+.listening-receipt {
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  padding: 30px 18px 16px;
+  border-radius: 0 0 18px 18px;
+  background: #d9ceff;
+  animation: listeningReceiptIn .28s ease-out both;
 }
 
-/* 按钮 = 圆 + 正下方一行小字；点击热区把字也包进去，好点 */
+@keyframes listeningReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 一行文字，没有任何图标：汉字（主角）+ 读音（拼音 · 印尼语），同一根左轴 */
+.listening-receipt-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+}
+
+.listening-receipt-text {
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.listening-receipt-read {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.listening-receipt-pinyin {
+  color: #6b6390;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.listening-receipt-dot {
+  margin: 0 6px;
+  color: #6b6390;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.listening-receipt-meaning {
+  color: #918bb0;
+  font-size: 12px;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* ---------- 大圆钮：这页唯一"说话的人"，也是页面主角 ---------- */
+.listening-player {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* 按钮就是一个圆：图标即全部内容，点击热区＝整个圆 */
 .listening-play {
   display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
   padding: 0;
   border: 0;
   background: none;
@@ -131,12 +197,6 @@
   box-shadow: 0 2px 0 var(--edge-button), 0 8px 16px rgba(79, 58, 224, 0.24);
 }
 
-.listening-play-label {
-  min-height: 18px;
-  color: var(--text-quiet);
-  font-size: 13px;
-  font-weight: 900;
-}
 
 /* 待作答时让圆里的喇叭图标轻轻呼吸，邀请点击：全页唯一的常驻动效
    （常驻·指引档：1.6s ease-in-out，图标 44px × 1.08 ≈ 扩 3.5px，圆钮本体完全不动） */
@@ -198,21 +258,6 @@
   cursor: default;
 }
 
-.listening-letter {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border-radius: 12px;
-  color: #7b7690;
-  background: var(--chip-fill);
-  font-size: 13px;
-  font-weight: 900;
-  transition: color var(--dur-press) ease, background var(--dur-press) ease;
-}
 
 .listening-option-text {
   font-size: 30px;
@@ -228,37 +273,26 @@
   box-shadow: 0 var(--edge-active-w) 0 var(--edge-select);
 }
 
-.listening-option.selected .listening-letter {
-  color: #ffffff;
-  background: var(--purple);
-}
 
-/* 答对：整块绿 + 勾徽章轻弹（勾是这页唯一的小奖励） */
+/* 答对：整块绿 + 勾徽章轻弹（绿圆白勾，勾＝课堂页同款笔形，这页唯一的小奖励） */
 .listening-option.correct {
   border-color: var(--answer-correct);
   background: #e8fbf3;
   box-shadow: 0 var(--edge-active-w) 0 #a9e8d3;
 }
 
-.listening-option.correct .listening-letter {
-  color: #ffffff;
-  background: var(--answer-correct);
-}
 
+/* 对勾徽章：22px 绿圆 + 18px 白勾 —— 全站尺子就是这一颗（笔在 styles.css 的 --check-pen）。
+   24 viewBox 缩到 18px → 墨迹约 12.7px、笔宽约 2.7px，在 22px 圆里居中（背景居中即 2px 内缩）。 */
 .listening-option.correct::after {
   position: absolute;
   top: 10px;
   right: 10px;
-  display: grid;
   width: 22px;
   height: 22px;
-  place-items: center;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 900;
-  content: "✓";
-  background: var(--answer-correct);
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   animation: listeningPop var(--dur-pop) var(--ease-pop);
 }
 
@@ -270,10 +304,6 @@
   animation: shake .35s ease;
 }
 
-.listening-option.wrong .listening-letter {
-  color: #ffffff;
-  background: var(--answer-wrong);
-}
 
 @media (hover: hover) {
   .listening-option:hover:not(:disabled):not(.selected) {

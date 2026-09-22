@@ -1,7 +1,7 @@
 /* 跟读模仿 · interaction-read-aloud.html 页面脚本（占位版）
    状态机：待朗读 → 录音中 → 识别中（固定 1 秒）→ 已出结果。
-   假流程：按住「按住说话」出现假波形，松开（或再点一下）后转 1 秒「识别中…」，
-   然后出现绿条反馈。全程不调麦克风、不发声、不弹任何授权框。
+   假流程：按住麦克风（按钮变红 + 红点），松开（或再点一下）后转 1 秒「识别中」，
+   然后回执条从卡片下沿滑出来。全程不调麦克风、不发声、不弹任何授权框。
    语音题不打分：反馈只有一句鼓励（只夸"开口说了"，不夸结果）；录音本身就是交卷——
    出结果时记账，两种模式都约 2 秒后弹「收到啦」，页面没有【完成】按钮。
    以后接真录音 + 语音识别时，往这张学习卡上加内容即可，页面骨架和状态机不用重写。
@@ -14,6 +14,14 @@
   const FAKE_LISTEN_MS = 1000;       // 假范读：喇叭脉冲保持 1 秒，然后自己停
   const CLICK_GUARD_MS = 500;        // 指针流程刚处理过的 click 不重复处理；键盘 / 读屏的 click 照常走
   const MODAL_DELAY = 2000;          // 出结果约 2 秒后自己弹「收到啦」（与选择题同一节奏）
+  /* 动作区那行小字：状态的唯一可见反馈（录音时手指压在按钮上，只有这行字露在外面）。
+     四态四句，全是换文案，不是藏起来 */
+  const HINT = {
+    idle: "按住读完松开 · Tahan, baca, lalu lepas",
+    recording: "正在听…… · Sedang mendengar",
+    recognizing: "听出来了？· Sebentar ya…",
+    result: "再读一次 · Baca lagi"
+  };
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
@@ -58,8 +66,7 @@
     el.listen = document.querySelector("[data-read-aloud-listen]");
     el.record = document.querySelector("[data-read-aloud-record]");
     el.recordIcon = document.querySelector("[data-read-aloud-record-icon]");
-    el.recordLabel = document.querySelector("[data-read-aloud-record-label]");
-    el.wave = document.querySelector("[data-read-aloud-wave]");
+    el.hint = document.querySelector("[data-read-aloud-hint]");
     el.result = document.querySelector("[data-read-aloud-result]");
     el.card = document.querySelector(".read-aloud-card");
     el.cheer = document.querySelector("[data-read-aloud-cheer]");
@@ -117,7 +124,9 @@
     el.card.classList.toggle("is-result", phase === "result");
   }
 
-  /* 按钮和波形的样子跟着状态走：待朗读 / 录音中 / 识别中 / 已出结果 */
+  /* 按钮和小字的样子跟着状态走：待朗读 / 录音中 / 识别中 / 已出结果。
+     按钮视觉上只有一个麦克风（没有文字），名字必须落在 aria-label 上——
+     否则用屏幕朗读的学生会遇到一个没有名字的按钮 */
   function paintRecord() {
     paintPanda();
     if (!el.record) return;
@@ -125,17 +134,21 @@
     const recognizing = phase === "recognizing";
     el.record.classList.toggle("is-recording", recording);
     el.record.classList.toggle("is-recognizing", recognizing);
-    /* 结果态：紫色大按钮降级成次要款 */
+    /* 结果态：紫色大按钮降级成次要款（白色那档同样不加字） */
     el.record.classList.toggle("is-retry", phase === "result");
     el.record.setAttribute("aria-pressed", recording ? "true" : "false");
     el.record.setAttribute("aria-busy", recognizing ? "true" : "false");
-    setText(el.recordIcon, recording ? "🔴" : "🎤");
-    setText(el.recordLabel, recording
-      ? "正在录音…"
+    el.record.setAttribute("aria-label", recording
+      ? "正在录音"
       : recognizing
-        ? "识别中…"
+        ? "识别中"
         : phase === "result" ? "再读一次" : "按住说话");
-    if (el.wave) el.wave.classList.toggle("is-visible", recording);
+    setText(el.recordIcon, recording ? "🔴" : "🎤");
+    setText(el.hint, recording
+      ? HINT.recording
+      : recognizing
+        ? HINT.recognizing
+        : phase === "result" ? HINT.result : HINT.idle);
   }
 
   function startRecording(nextGesture) {
@@ -291,7 +304,7 @@
     startQuestion();
   }
 
-  /* 气泡里的鼓励：只夸"开口说了"，不评价结果；没有分数，也不给读屏念任何分数 */
+  /* 回执条里的鼓励：只夸"开口说了"，不评价结果；没有分数，也不给读屏念任何分数 */
   function renderCheer() {
     setText(el.cheer, QUESTION.cheer.zh);
     setText(el.cheerId, QUESTION.cheer.id);
@@ -320,7 +333,9 @@
     setHidden(el.cheerRow, true);
     renderCheer();
     paintRecord();
-    announce("先点「听范读」看正确读音，再按住「按住说话」读一遍。");
+    /* 屏幕上没有「按住说话」四个字了，只留麦克风图标：指路语说"麦克风"，
+       别念一个学生找不到的按钮名（按钮自己的 aria-label 仍然是「按住说话」） */
+    announce("先点「听范读」听一遍，再按住麦克风跟着读。");
   }
 
   function bindEvents() {

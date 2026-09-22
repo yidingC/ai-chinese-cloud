@@ -25,18 +25,26 @@
     </header>
 
     <main class="page page-content">
-      <section class="correction-card" aria-labelledby="correction-prompt">
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="correction-stage">
+        <section class="correction-card" aria-labelledby="correction-prompt">
 
-        <!-- 题面只说给读屏听：页面上让句子（字块）自己说话 -->
-        <p class="correction-sr" id="correction-prompt" data-correction-prompt>下面这句话里有一个词用错了，点出来。</p>
+          <!-- 题面：卡片里、句子框正上方的一行（中文短句 + 印尼语小字），
+               同时是卡片和句子组的无障碍标题 -->
+          <div class="correction-prompt-block">
+            <p class="correction-prompt" id="correction-prompt">点出用错的词。</p>
+            <p class="correction-prompt-id" lang="id">Ketuk kata yang salah.</p>
+          </div>
 
-        <div class="correction-sentence" role="group" aria-labelledby="correction-prompt" data-correction-sentence></div>
+          <div class="correction-sentence" role="group" aria-labelledby="correction-prompt" data-correction-sentence></div>
 
-        <button type="button" class="primary-button correction-submit btn-stacked" data-correction-submit disabled>
-          <span data-correction-submit-label>提交</span>
-          <span class="btn-id" lang="id" data-correction-submit-label-id>Kirim</span>
-        </button>
+          <button type="button" class="primary-button correction-submit btn-stacked" data-correction-submit disabled>
+            <span data-correction-submit-label>提交</span>
+            <span class="btn-id" lang="id" data-correction-submit-label-id>Kirim</span>
+          </button>
+        </section>
 
+        <!-- 回执条：卡片的下一层兄弟。未提交时 hidden；提交后从卡片底下滑出 -->
         <div class="correction-feedback hidden" role="status" aria-live="polite" tabindex="-1" data-correction-feedback>
           <strong class="correction-feedback-title hidden" data-correction-feedback-title-row>
             <span aria-hidden="true" data-correction-feedback-icon></span>
@@ -47,7 +55,7 @@
           <p class="correction-feedback-copy" data-correction-feedback-copy></p>
           <p class="correction-feedback-id" lang="id" data-correction-feedback-id></p>
         </div>
-      </section>
+      </div>
 
       <p class="correction-announcer" data-correction-announcer role="status" aria-live="polite"></p>
     </main>

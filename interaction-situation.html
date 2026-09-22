@@ -25,21 +25,25 @@
     </header>
 
     <main class="page page-content">
-      <section class="situation-card" data-situation-card aria-labelledby="situation-scene">
-        <div class="situation-scene">
-          <div class="situation-slot" data-situation-slot></div>
-          <h2 class="situation-scene-text" id="situation-scene" data-situation-scene-text></h2>
-          <p class="situation-scene-id" lang="id" data-situation-scene-id></p>
-        </div>
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="situation-stage">
+        <section class="situation-card" data-situation-card aria-labelledby="situation-scene">
+          <div class="situation-scene">
+            <div class="situation-slot" data-situation-slot></div>
+            <h2 class="situation-scene-text" id="situation-scene" data-situation-scene-text></h2>
+            <p class="situation-scene-id" lang="id" data-situation-scene-id></p>
+          </div>
 
-        <p class="situation-sr" data-situation-options-label>选一句最得体的说法。</p>
-        <div class="situation-options" role="group" aria-labelledby="situation-options-label" data-situation-options></div>
+          <p class="situation-sr" data-situation-options-label>选一句最得体的说法。</p>
+          <div class="situation-options" role="group" aria-labelledby="situation-options-label" data-situation-options></div>
 
-        <button type="button" class="primary-button situation-submit btn-stacked" data-situation-submit disabled>
-          <span data-situation-submit-label>提交</span>
-          <span class="btn-id" lang="id" data-situation-submit-label-id>Kirim</span>
-        </button>
+          <button type="button" class="primary-button situation-submit btn-stacked" data-situation-submit disabled>
+            <span data-situation-submit-label>提交</span>
+            <span class="btn-id" lang="id" data-situation-submit-label-id>Kirim</span>
+          </button>
+        </section>
 
+        <!-- 回执条：卡片的下一层兄弟。未提交时 hidden；提交后从卡片底下滑出 -->
         <div class="situation-feedback hidden" role="status" aria-live="polite" tabindex="-1" data-situation-feedback>
           <strong class="situation-feedback-title hidden" data-situation-feedback-title-row>
             <span aria-hidden="true" data-situation-feedback-icon></span>
@@ -48,8 +52,7 @@
           <p class="situation-feedback-sentence" data-situation-feedback-sentence></p>
           <p class="situation-feedback-translation" lang="id" data-situation-feedback-translation></p>
         </div>
-
-      </section>
+      </div>
 
       <p class="situation-sr" role="status" aria-live="polite" data-activity-status>当前状态：待作答</p>
     </main>

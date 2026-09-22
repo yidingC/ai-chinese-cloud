@@ -25,52 +25,52 @@
     </header>
 
     <main class="page page-content">
-      <section class="read-aloud-card" aria-labelledby="read-aloud-sr">
-        <!-- 熊猫出题：站在那儿出题的角色，表情只写在 --avatar-glyph 一处 -->
-        <div class="read-aloud-panda" aria-hidden="true"></div>
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="read-aloud-stage">
+        <section class="read-aloud-card" aria-labelledby="read-aloud-sr">
+          <!-- 熊猫出题：站在那儿出题的角色，表情只写在 --avatar-glyph 一处 -->
+          <div class="read-aloud-panda" aria-hidden="true"></div>
 
-        <!-- 题面只说给读屏听：页面上让话语盒和两个按钮自己说话 -->
-        <p class="read-aloud-sr" id="read-aloud-sr" data-read-aloud-prompt>听一遍，然后跟着读</p>
+          <!-- 题面只说给读屏听：页面上让话语盒和两个按钮自己说话 -->
+          <p class="read-aloud-sr" id="read-aloud-sr" data-read-aloud-prompt>听一遍，然后跟着读</p>
 
-        <!-- 这个气泡 = 熊猫说出来的话：听范读是熊猫念给你听，按住说话是你念给它听。
-             一个页面只有这一只熊猫、这一个气泡，别再加第二个角色。
-             气泡里只放"要读的东西"（你好 + 拼音），鼓励不在这里。 -->
-        <div class="read-aloud-plate">
-          <!-- 范读＝多邻国式裸喇叭：贴在第一行文字左边，整组居中；点击热区靠 padding 撑够 -->
-          <p class="read-aloud-line">
-            <button type="button" class="read-aloud-speaker" data-read-aloud-listen aria-label="听范读">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M11 5 6 9H3v6h3l5 4V5z"/>
-                <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
-                <path d="M18.5 6a9 9 0 0 1 0 12"/>
-              </svg>
-            </button>
-            <span class="read-aloud-text" lang="zh-CN" data-read-aloud-text>你好</span>
-          </p>
-          <p class="read-aloud-pinyin" data-read-aloud-pinyin>nǐ hǎo</p>
-        </div>
+          <!-- 这个气泡 = 熊猫说出来的话：听范读是熊猫念给你听，按住说话是你念给它听。
+               一个页面只有这一只熊猫、这一个气泡，别再加第二个角色。
+               气泡里只放"要读的东西"（你好 + 拼音），鼓励不在这里。 -->
+          <div class="read-aloud-plate">
+            <!-- 范读＝多邻国式裸喇叭：贴在第一行文字左边，整组居中；点击热区靠 padding 撑够 -->
+            <p class="read-aloud-line">
+              <button type="button" class="read-aloud-speaker" data-read-aloud-listen aria-label="听范读">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M11 5 6 9H3v6h3l5 4V5z"/>
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+                  <path d="M18.5 6a9 9 0 0 1 0 12"/>
+                </svg>
+              </button>
+              <span class="read-aloud-text" lang="zh-CN" data-read-aloud-text>你好</span>
+            </p>
+            <p class="read-aloud-pinyin" data-read-aloud-pinyin>nǐ hǎo</p>
+          </div>
+        </section>
 
-        <button type="button" class="read-aloud-record-button" data-read-aloud-record aria-pressed="false" aria-busy="false">
-          <span class="read-aloud-record-icon" aria-hidden="true" data-read-aloud-record-icon>🎤</span>
-          <span class="read-aloud-record-label" data-read-aloud-record-label>按住说话</span>
-        </button>
-        <!-- 假音量波形：CSS 动画，不接麦克风 -->
-        <div class="read-aloud-wave" data-read-aloud-wave aria-hidden="true">
-          <span></span><span></span><span></span><span></span><span></span>
-        </div>
-
-        <p class="read-aloud-hint">按住读完松开 · Tahan, baca, lalu lepas</p>
-
-        <!-- 结果态：只有绿条这一句反馈——录音本身就是交卷，弹窗自己来，不再有【完成】 -->
+        <!-- 回执条：只夸"开口说了"，不评价结果；出结果时从卡片下沿滑出来（见 js / css） -->
         <div class="read-aloud-result hidden" data-read-aloud-result tabindex="-1">
-          <!-- 只夸"开口说了"，不评价结果；出结果才出现（点击触发的是自动弹窗，见 js） -->
           <p class="read-aloud-cheer hidden" data-read-aloud-cheer-row>
             <span data-read-aloud-cheer>说得不错！</span>
             <i class="read-aloud-cheer-dot" aria-hidden="true">·</i>
             <span class="read-aloud-cheer-id" lang="id" data-read-aloud-cheer-id>Bagus!</span>
           </p>
         </div>
-      </section>
+      </div>
+
+      <!-- 贴底动作区：一行小字（状态都靠它说）→ 通栏麦克风 -->
+      <div class="read-aloud-actions">
+        <p class="read-aloud-hint" data-read-aloud-hint>按住读完松开 · Tahan, baca, lalu lepas</p>
+        <!-- 视觉上只有麦克风；名字靠 aria-label 给读屏（见 js），不留可见文字 -->
+        <button type="button" class="read-aloud-record-button" data-read-aloud-record aria-label="按住说话" aria-pressed="false" aria-busy="false">
+          <span class="read-aloud-record-icon" aria-hidden="true" data-read-aloud-record-icon>🎤</span>
+        </button>
+      </div>
 
       <p class="read-aloud-announcer" data-read-aloud-announcer role="status" aria-live="polite"></p>
     </main>

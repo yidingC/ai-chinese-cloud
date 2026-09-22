@@ -25,41 +25,43 @@
     </header>
 
     <main class="page page-content">
-      <section class="picture-talk-card" aria-labelledby="picture-talk-prompt">
-        <!-- 题面只说给读屏听：页面上让大图和「🎤 按住说话」自己说话 -->
-        <p class="picture-talk-sr" id="picture-talk-prompt" data-picture-talk-prompt>看这张图，用中文说一句话。</p>
+      <!-- 卡片 + 学习卡：学习卡是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="picture-talk-stage">
+        <section class="picture-talk-card" aria-labelledby="picture-talk-prompt">
+          <!-- 题面只说给读屏听：页面上让大图和底部那枚麦克风自己说话 -->
+          <p class="picture-talk-sr" id="picture-talk-prompt" data-picture-talk-prompt>看这张图，用中文说一句话。</p>
 
-        <div class="picture-talk-figure">
-          <!-- 图槽内容由脚本渲染：现在是 emoji，数据里填上 image 路径就换成真图 -->
-          <div class="picture-talk-slot" data-picture-talk-slot></div>
-        </div>
+          <div class="picture-talk-figure">
+            <!-- 图槽内容由脚本渲染：现在是 emoji，数据里填上 image 路径就换成真图 -->
+            <div class="picture-talk-slot" data-picture-talk-slot></div>
+          </div>
 
-        <p class="picture-talk-hint" data-picture-talk-hint></p>
+          <p class="picture-talk-hint" data-picture-talk-hint></p>
+        </section>
 
-        <button type="button" class="picture-talk-mic" data-picture-talk-mic aria-pressed="false" aria-busy="false">
-          <span class="picture-talk-mic-icon" aria-hidden="true">🎤</span>
-          <span class="picture-talk-mic-label" data-picture-talk-mic-label>按住说话</span>
-        </button>
-
-        <!-- 假波形：只在录音中出现（状态动效），纯 CSS 动画，不接麦克风 -->
-        <div class="picture-talk-wave" aria-hidden="true" data-picture-talk-wave>
-          <span class="picture-talk-wave-bar"></span>
-          <span class="picture-talk-wave-bar"></span>
-          <span class="picture-talk-wave-bar"></span>
-          <span class="picture-talk-wave-bar"></span>
-          <span class="picture-talk-wave-bar"></span>
-        </div>
-
-        <p class="picture-talk-record-hint">按住说完松开 · Tahan, lepas setelah selesai</p>
-
-        <!-- 学习卡：录完（＝交卷）出现，只放「一句鼓励 + 能学的内容」——不打分，约 2 秒后自己弹弹窗 -->
+        <!-- 学习卡：录完（＝交卷）出现，只放「一句鼓励 + 参考答案」——不打分，约 2 秒后自己弹弹窗 -->
         <div class="picture-talk-result hidden" role="status" aria-live="polite" tabindex="-1" data-picture-talk-result>
-          <p class="picture-talk-cheer" data-picture-talk-cheer></p>
-          <p class="picture-talk-result-label">参考答案 · Jawaban contoh</p>
+          <!-- 鼓励行：中文大字 + 「·」+ 印尼小字，和下面两行同一根左轴（不居中），点只做装饰 -->
+          <p class="picture-talk-cheer">
+            <span data-picture-talk-cheer>说得不错！</span>
+            <i class="picture-talk-cheer-dot" aria-hidden="true">·</i>
+            <span class="picture-talk-cheer-id" lang="id" data-picture-talk-cheer-id>Bagus!</span>
+          </p>
+
+          <!-- 参考答案：句子自己说明是参考答案，不再挂「参考答案 · Jawaban contoh」标签行（同开放问答页） -->
           <p class="picture-talk-answer" data-picture-talk-answer></p>
           <p class="picture-talk-answer-id" lang="id" data-picture-talk-answer-id></p>
         </div>
-      </section>
+      </div>
+
+      <!-- 贴底动作区：一行小字（状态都靠它说）→ 通栏麦克风 -->
+      <div class="picture-talk-actions">
+        <p class="picture-talk-record-hint" data-picture-talk-record-hint>按住说完松开 · Tahan, lepas setelah selesai</p>
+        <!-- 视觉上只有麦克风；名字靠 aria-label 给读屏（见 js），不留可见文字 -->
+        <button type="button" class="picture-talk-mic" data-picture-talk-mic aria-label="按住说话" aria-pressed="false" aria-busy="false">
+          <span class="picture-talk-mic-icon" aria-hidden="true" data-picture-talk-mic-icon>🎤</span>
+        </button>
+      </div>
 
       <p class="picture-talk-announcer" data-picture-talk-announcer role="status" aria-live="polite"></p>
     </main>

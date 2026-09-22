@@ -67,7 +67,13 @@
 .header-subtitle { color: var(--text-subtle); }
 
 /* ---------- 题面卡片：一个词 + 拼音，居中 ---------- */
+.choice-stage {
+  position: relative;
+}
+
 .choice-card {
+  position: relative;
+  z-index: 1;
   padding: 18px 16px 16px;
   border: 2px solid var(--line-card);
   border-radius: var(--radius-card);
@@ -151,19 +157,14 @@
 }
 
 .choice-tile.correct::after {
-  content: "✓";
   position: absolute;
   top: 10px;
   right: 10px;
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
+  width: 22px;
+  height: 22px;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 900;
-  background: var(--answer-correct);
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   animation: choicePop var(--dur-pop) var(--ease-pop);
 }
 
@@ -202,39 +203,55 @@
   cursor: not-allowed;
 }
 
-/* ---------- 结果条：结果出场 ---------- */
+/* ---------- 回执条：从卡片底下滑出 ----------
+   位置：绝对定位在卡片下沿，往上压进 13px（那段被卡片吃掉）——不占位、不留空隙；
+   卡片 z-index 更高，滑出的全过程都被卡片下沿压着（能看见字被压掉半截）。
+   形状：扁平一张纸条——无描边、无厚度、无阴影，只有下方两个圆角；
+   左右内边距 18px ＝ 卡片 2px 描边 + 16px 内边距，文字与卡片内文同一根左轴。
+   配色按语义给：答对＝绿，答错＝粉红（只报正确答案）；要换回中性色只改 .is-wrong 那一行。 */
 .choice-feedback {
-  margin-top: 15px;
-  padding: 15px 16px;
-  border: 2px solid transparent;
-  border-radius: var(--radius-option);
-  font-size: 12px;
-  line-height: 1.6;
-  animation: choiceFeedbackIn var(--dur-enter) var(--ease-enter);
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 30px 18px 16px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: none;
+  animation: choiceReceiptIn .28s ease-out both;
 }
 
 .choice-feedback.is-correct {
-  border-color: #a9e8d3;
-  background: #e8fbf3;
-  box-shadow: 0 4px 0 #d3f2e7;
+  background: #d4f3e9;
 }
 
-/* 框里装的是正确答案，不是错误提示：用中性紫，不用红 */
 .choice-feedback.is-wrong {
-  border-color: #d9d3ee;
-  background: var(--select-fill);
-  box-shadow: 0 4px 0 #dad4f0;
+  background: #fbd4d7; /* 想换回中性紫：把这里改成 #d9ceff，只改这一行 */
 }
 
 .choice-feedback-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
+  margin: 0;
+  font-size: 17px;
   font-weight: 900;
 }
 
 .choice-feedback.is-correct .choice-feedback-title { color: var(--answer-correct-text); }
+
+/* 结果条里的行内小勾：同一支笔（15px），颜色跟着这一行；不是"答对"时不占位 */
+.choice-feedback-title [data-choice-feedback-icon]:not(:empty) {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  font-size: 0;
+  background: currentColor;
+  -webkit-mask: var(--check-pen) center / contain no-repeat;
+  mask: var(--check-pen) center / contain no-repeat;
+}
 
 .choice-feedback-answer {
   margin: 7px 0 0;
@@ -243,13 +260,14 @@
   font-weight: 900;
 }
 
-/* 有错时框里只有意思行，没有标题行 */
+/* 有错时条里只有意思行，没有标题行 */
 .choice-feedback.is-wrong .choice-feedback-answer { margin-top: 0; }
 
 /* ---------- 关键帧 ---------- */
-@keyframes choiceFeedbackIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+/* 出场：从卡片底下往下滑 30px 到位；开了"减弱动态效果"时 styles.css 的全局规则把它压成瞬时 */
+@keyframes choiceReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes choicePop {

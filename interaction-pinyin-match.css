@@ -1,5 +1,5 @@
 /* 拼音—汉字—含义匹配 · interaction-pinyin-match.html 专用样式
-   一屏一组、共 3 组，引导只交给两枚步骤胶囊（① 看拼音选汉字 / ② 选意思），
+   一屏一组、共 3 组，引导只交给两枚步骤小字（看拼音选汉字 / 选意思），
    页面不放说明文字：拼音大字是主角，选项是唯一入口，收集槽显示进度。
    外观数值抄《视觉打磨规范 v0.2》第一节的尺子（黄金样板 interaction-choice.css）：
    圆角 20、2px 静默描边、硬底 2px、按下下沉 2px／150ms、对错 4px 硬底，
@@ -55,7 +55,18 @@
 }
 
 /* ---------- 作答卡 ---------- */
+/* 卡片 + 回执条：条是卡片的下一层，平时整条压在卡片下沿后面。
+   容器叫 py-receipt-stage —— .py-stage 已经是卡片里"步骤②"那块的名字 */
+.py-receipt-stage {
+  position: relative;
+  /* 卡片下面还有一条"已配好的组合"槽位行（.py-slots）：回执条滑出时压在它上面，
+     不然槽位的灰底和条的字会互相透出来。卡片的影子也跟着抬到这一层 */
+  z-index: 1;
+}
+
 .py-card {
+  position: relative;
+  z-index: 1;
   padding: 16px 15px 18px;
   border: 2px solid var(--line-card);
   border-radius: var(--radius-card);
@@ -71,26 +82,19 @@
   text-align: center;
 }
 
-/* 步骤胶囊：白底 + 静默描边，轻量到不抢拼音；当前步字色深、已过步字色浅 */
+/* 步骤标签：一行浅灰小字，不描边、不做胶囊，不跟拼音抢视线。
+   .is-current 只留给 JS 标"当前步"（读屏用），不再靠它改颜色 */
 .py-step {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   margin: 0;
-  padding: 5px 12px;
-  border: 2px solid var(--line-card);
-  border-radius: 999px;
-  background: #ffffff;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--text-subtle);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.01em;
-  transition: color var(--dur-press) ease, border-color var(--dur-press) ease;
-}
-
-.py-step.is-current {
-  border-color: var(--line-soft);
-  color: var(--text-quiet);
 }
 
 .py-pinyin {
@@ -109,6 +113,12 @@
 
 @keyframes pyEnter {
   from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 回执条：从卡片底下往下滑 30px 到位 */
+@keyframes pyReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -190,19 +200,14 @@
 }
 
 .py-option.correct::after {
-  content: "✓";
   position: absolute;
   top: -8px;
   right: -8px;
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
+  width: 22px;
+  height: 22px;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  background: var(--answer-correct);
-  font-size: 14px;
-  font-weight: 900;
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   animation: pyPop var(--dur-pop) var(--ease-pop);
 }
 
@@ -220,23 +225,31 @@
   100% { transform: scale(1); }
 }
 
-/* ---------- 步骤②：胶囊 + 含义选项一起滑入 ---------- */
+/* ---------- 步骤②：与汉字区之间一条极细分隔线，标签 + 含义选项一起滑入 ---------- */
 .py-stage {
-  margin-top: 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-card);
   animation: pyEnter var(--dur-enter) var(--ease-enter);
 }
 
-/* ---------- 提示条：只在选错时出现（中性紫，不放正确答案） ---------- */
+/* ---------- 提示条：从卡片下沿滑出的回执条（最上面 13px 压在卡底下）；
+   只在选错时出现（中性紫，不放正确答案） ---------- */
 .py-feedback {
-  margin-top: 14px;
-  padding: 15px 16px;
-  border: 2px solid var(--select-line);
-  border-radius: var(--radius-option);
-  background: var(--select-fill);
-  box-shadow: 0 var(--edge-active-w) 0 var(--select-edge);
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 30px 18px 16px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: none;
+  background: #d9ceff;
   font-size: 12px;
   line-height: 1.6;
-  animation: pyEnter var(--dur-enter) var(--ease-enter);
+  animation: pyReceiptIn .28s ease-out both;
 }
 
 .py-feedback-title {
@@ -286,19 +299,14 @@
 }
 
 .py-slot.is-filled::after {
-  content: "✓";
   position: absolute;
   top: 6px;
   right: 6px;
-  display: grid;
-  width: 20px;
-  height: 20px;
-  place-items: center;
+  width: 22px;
+  height: 22px;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  background: var(--answer-correct);
-  font-size: 12px;
-  font-weight: 900;
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   animation: pyPop var(--dur-pop) var(--ease-pop);
 }
 
@@ -349,7 +357,6 @@
   }
 
   .py-step {
-    padding: 4px 10px;
     font-size: 11px;
   }
 

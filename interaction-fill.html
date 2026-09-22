@@ -25,32 +25,35 @@
     </header>
 
     <main class="page page-content">
-      <section class="fill-card" data-activity-slot data-fill-state="idle" aria-label="补全句子作答区">
-        <p class="fill-sentence" data-fill-sentence lang="zh-CN"></p>
-        <div class="fill-bank" data-fill-bank role="group" aria-label="词库，点一个词把它填进空格"></div>
-      </section>
+      <div class="fill-stage">
+        <section class="fill-card" data-activity-slot data-fill-state="idle" aria-label="补全句子作答区">
+          <p class="fill-sentence" data-fill-sentence lang="zh-CN"></p>
+          <div class="fill-bank" data-fill-bank role="group" aria-label="词库，点一个词把它填进空格"></div>
 
-      <div class="fill-actions">
-        <button type="button" class="secondary-button fill-clear btn-stacked" data-fill-clear disabled>
-          <span data-fill-clear-label>重置</span>
-          <span class="btn-id" lang="id">Ulangi</span>
-        </button>
-        <button type="button" class="primary-button fill-submit btn-stacked" data-fill-submit disabled>
-          <span data-fill-submit-label>提交</span>
-          <span class="btn-id" lang="id" data-fill-submit-label-id>Kirim</span>
-        </button>
+          <div class="fill-actions">
+            <button type="button" class="secondary-button fill-clear btn-stacked" data-fill-clear disabled>
+              <span data-fill-clear-label>重置</span>
+              <span class="btn-id" lang="id">Ulangi</span>
+            </button>
+            <button type="button" class="primary-button fill-submit btn-stacked" data-fill-submit disabled>
+              <span data-fill-submit-label>提交</span>
+              <span class="btn-id" lang="id" data-fill-submit-label-id>Kirim</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- 回执条：从卡片底下滑出。绝对定位、不占位；平时整条压在卡片下沿后面 -->
+        <div class="fill-feedback hidden" role="status" aria-live="polite" data-fill-feedback>
+          <strong class="fill-feedback-title">
+            <span aria-hidden="true" data-fill-feedback-icon></span>
+            <span data-fill-verdict></span>
+          </strong>
+          <p class="fill-feedback-sentence hidden" data-fill-full-sentence></p>
+          <p class="fill-feedback-translation hidden" data-fill-full-sentence-id lang="id"></p>
+        </div>
       </div>
 
       <p class="fill-live" data-fill-live role="status" aria-live="polite"></p>
-
-      <div class="fill-feedback hidden" role="status" aria-live="polite" data-fill-feedback>
-        <strong class="fill-feedback-title">
-          <span aria-hidden="true" data-fill-feedback-icon></span>
-          <span data-fill-verdict></span>
-        </strong>
-        <p class="fill-feedback-sentence hidden" data-fill-full-sentence></p>
-        <p class="fill-feedback-translation hidden" data-fill-full-sentence-id lang="id"></p>
-      </div>
     </main>
   </div>
 

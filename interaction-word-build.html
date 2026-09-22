@@ -25,32 +25,36 @@
     </header>
 
     <main class="page page-content">
-      <section class="word-card">
-        <!-- 题目牌：全页唯一“说话的人”，emoji + 印尼语词就是题面 -->
-        <div class="word-hint">
-          <span class="word-hint-slot" data-word-hint-slot></span>
-          <strong class="word-hint-meaning" data-word-hint-meaning>ibu</strong>
-        </div>
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="word-stage">
+        <section class="word-card">
+          <!-- 题目牌：全页唯一“说话的人”，emoji + 印尼语词就是题面 -->
+          <div class="word-hint">
+            <span class="word-hint-slot" data-word-hint-slot></span>
+            <strong class="word-hint-meaning" data-word-hint-meaning>ibu</strong>
+          </div>
 
-        <section class="word-answer-area" aria-label="作答区">
-          <div class="word-slots" data-word-slots></div>
+          <section class="word-answer-area" aria-label="作答区">
+            <div class="word-slots" data-word-slots></div>
+          </section>
+
+          <section class="word-bank-area" aria-label="字块区">
+            <div class="word-bank" data-word-bank></div>
+          </section>
+
+          <div class="word-actions">
+            <button type="button" class="secondary-button btn-stacked" data-word-reset>
+              <span data-word-reset-label>重置</span>
+              <span class="btn-id" lang="id">Ulangi</span>
+            </button>
+            <button type="button" class="primary-button btn-stacked" data-word-submit disabled>
+              <span data-word-submit-label>提交</span>
+              <span class="btn-id" lang="id" data-word-submit-label-id>Kirim</span>
+            </button>
+          </div>
         </section>
 
-        <section class="word-bank-area" aria-label="字块区">
-          <div class="word-bank" data-word-bank></div>
-        </section>
-
-        <div class="word-actions">
-          <button type="button" class="secondary-button btn-stacked" data-word-reset>
-            <span data-word-reset-label>重置</span>
-            <span class="btn-id" lang="id">Ulangi</span>
-          </button>
-          <button type="button" class="primary-button btn-stacked" data-word-submit disabled>
-            <span data-word-submit-label>提交</span>
-            <span class="btn-id" lang="id" data-word-submit-label-id>Kirim</span>
-          </button>
-        </div>
-
+        <!-- 回执条：卡片的下一层兄弟。未提交时 hidden；提交后从卡片底下滑出 -->
         <div class="word-feedback hidden" role="status" aria-live="polite" data-word-feedback>
           <strong class="word-feedback-title">
             <span aria-hidden="true" data-word-feedback-icon></span>
@@ -58,7 +62,7 @@
           </strong>
           <p class="word-feedback-answer" data-word-feedback-answer></p>
         </div>
-      </section>
+      </div>
 
       <p class="word-live" role="status" aria-live="polite" data-activity-status></p>
     </main>

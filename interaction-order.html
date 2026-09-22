@@ -25,35 +25,39 @@
     </header>
 
     <main class="page page-content">
-      <section class="order-card" aria-labelledby="order-scene">
-        <p class="order-scene" id="order-scene">
-          <span class="order-scene-icon" aria-hidden="true">🛒</span>
-          <span>你和妈妈在水果店，你想告诉她你要买什么。<span class="order-scene-id" lang="id">Kamu dan ibumu ada di toko buah. Katakan apa yang ingin kamu beli.</span></span>
-        </p>
-      </section>
+      <div class="order-stage">
+        <section class="order-card" aria-labelledby="order-scene">
+          <p class="order-scene" id="order-scene">
+            <span class="order-scene-icon" aria-hidden="true">🛒</span>
+            <span>你和妈妈在水果店，你想告诉她你要买什么。<span class="order-scene-id" lang="id">Kamu dan ibumu ada di toko buah. Katakan apa yang ingin kamu beli.</span></span>
+          </p>
+        </section>
 
-      <section class="order-answer-area" aria-label="答案行">
-        <div class="order-answer-line" data-order-answer></div>
-      </section>
+        <section class="order-board">
+          <section class="order-answer-area" aria-label="答案行">
+            <div class="order-answer-line" data-order-answer></div>
+          </section>
 
-      <section class="order-bank-area" aria-label="词库">
-        <div class="order-bank" data-order-bank></div>
-      </section>
+          <section class="order-bank-area" aria-label="词库">
+            <div class="order-bank" data-order-bank></div>
+          </section>
 
-      <div class="order-actions">
-        <button type="button" class="secondary-button btn-stacked" data-order-clear>
-          <span data-order-clear-label>重置</span>
-          <span class="btn-id" lang="id">Ulangi</span>
-        </button>
-        <button type="button" class="primary-button btn-stacked" data-order-submit disabled>
-          <span data-order-submit-label>提交</span>
-          <span class="btn-id" lang="id" data-order-submit-label-id>Kirim</span>
-        </button>
+          <div class="order-actions">
+            <button type="button" class="secondary-button btn-stacked" data-order-clear>
+              <span data-order-clear-label>重置</span>
+              <span class="btn-id" lang="id">Ulangi</span>
+            </button>
+            <button type="button" class="primary-button btn-stacked" data-order-submit disabled>
+              <span data-order-submit-label>提交</span>
+              <span class="btn-id" lang="id" data-order-submit-label-id>Kirim</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="order-feedback hidden" data-order-feedback tabindex="-1" aria-label="本题反馈"></section>
       </div>
 
       <p class="order-announcer" data-order-announcer role="status" aria-live="polite"></p>
-
-      <section class="order-feedback hidden" data-order-feedback tabindex="-1" aria-label="本题反馈"></section>
     </main>
   </div>
 

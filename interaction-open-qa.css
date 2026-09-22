@@ -1,8 +1,9 @@
 /* 开放问答 · interaction-open-qa.html 专用样式
-   本页只有一个"说话的人"：「🎤 按住说话」——没有题干块、没有角标、没有说明条。
-   尺子与黄金样板 interaction-choice.css / interaction-listening.css 对齐：顶部变量整块照抄，
+   版面：卡片（题干 + 插画带）＋ 贴底动作区（一行小字 → 通栏麦克风）。
+   学习卡是卡片的下一层兄弟：平时整块压进卡片下沿后面，出结果才往下滑出来。
+   尺子与黄金样板 interaction-choice.css / 同批跟读页对齐：顶部变量整块照抄，
    不自造颜色 / 厚度 / 时长。
-   假流程的状态（录音中 / 识别中 / 假波形）都是 CSS 动画，不接麦克风、不发声音。 */
+   假流程的状态（录音中 / 识别中）都靠按钮颜色 + 动作区那行小字说：不接麦克风、不发声音、不跳柱子。 */
 
 :root {
   /* 颜色 */
@@ -15,9 +16,6 @@
   --text-subtle: #8f8aa3;
   --button-disabled-fill: #eceaf4;
   --button-disabled-text: #a5a0bd;
-  --plate-line: #e6e1ff;
-  --hint-meaning: #a7a1bd;
-  --hint-dot: #bdb8d4;
 
   /* 圆角 / 厚度 / 按下幅度 */
   --radius-card: 28px;
@@ -28,7 +26,7 @@
   --press-button: 4px;
 
   /* 字号 */
-  --text-question: 23px;
+  --text-question: 28px;
   --text-button: 17px;
 
   /* 动效 */
@@ -39,12 +37,17 @@
   --ease-pop: cubic-bezier(.2, .9, .3, 1.25);
 }
 
-/* 这一页要「一屏放得下」：正文只撑到「屏幕 − 假状态栏 − 顶栏」为止，
-   卡片底部不与悬浮胶囊抢高度，所以不再留听音页那 160px 的滚动缓冲
-   （卡片最后一件事是学习卡，滚到底时它始终在右下角两个小胶囊上方）。 */
+/* 正文只撑到「屏幕 − 假状态栏 − 顶栏」；底部给贴底动作区留出地方
+   （动作区约 125px + 16px 呼吸），矮屏装不下就允许滚动 */
 .page-content {
   min-height: calc(100svh - 92px);
-  padding-bottom: 12px;
+  padding-bottom: calc(141px + env(safe-area-inset-bottom));
+}
+
+/* 学习卡滑出来以后，页面底部再多留「学习卡露在卡片外的那一段 + 16」，矮屏才滚得动、
+   能把整张学习卡带到动作区上方；卡片位置和高度都不受影响（学习卡是绝对定位的） */
+.page-content.has-result {
+  padding-bottom: calc(291px + env(safe-area-inset-bottom));
 }
 
 /* ---------- 页面底子 ---------- */
@@ -75,9 +78,16 @@
   white-space: nowrap;
 }
 
-/* ---------- 卡片：问题 → 关键词 → 按住说话 ---------- */
+/* 卡片 + 学习卡的定位上下文：学习卡绝对定位在卡片下沿，卡片压在它上面 */
+.openqa-stage {
+  position: relative;
+}
+
+/* ---------- 卡片：只装题干 + 插画带；按钮那一组已经搬到贴底动作区 ---------- */
 .openqa-card {
-  padding: 16px 16px 14px;
+  position: relative;
+  z-index: 1;
+  padding: 16px;
   border: 2px solid var(--line-card);
   border-radius: var(--radius-card);
   background: #ffffff;
@@ -85,7 +95,7 @@
 }
 
 .openqa-stem {
-  margin-bottom: 12px;
+  margin-bottom: 20px;
 }
 
 .openqa-question {
@@ -93,100 +103,101 @@
   color: var(--ink);
   font-size: var(--text-question);
   font-weight: 900;
-  line-height: 1.32;
+  line-height: 1.34;
   overflow-wrap: anywhere;
 }
 
 .openqa-question-id {
-  margin: 5px 0 0;
+  margin: 14px 0 0;
   color: var(--text-subtle);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 900;
-  line-height: 1.45;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
-/* ---------- 关键词：只帮学生组织语言，不是选项、点不动 ---------- */
-.openqa-hints {
-  margin-bottom: 14px;
+/* ---------- 插画带：三个词的意思直接画出来（跟课堂投票页 .poll-figure svg 同款） ----------
+   没有描边、没有硬底边；圆角靠 svg 自己的 border-radius（overflow 收边），四个角都要圆。
+   图形本身只给读屏一句 aria-label，不逐块念（见 html） */
+.openqa-figure {
+  margin: 0;
 }
 
-.openqa-hints-label {
-  margin: 0 0 6px;
+.openqa-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+  border-radius: 20px;
+  box-shadow: 0 6px 18px rgba(58, 48, 116, 0.07);
+}
+
+/* 图下三列小词：只留汉字 + 拼音（意思图形已经说完了），列宽各 1/3，
+   正好对在图上三个图形的中心（1/6、1/2、5/6 处） */
+.openqa-words {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  /* 只留和插画之间的 10px：ul 默认带着 16px 下外边距，会白白把卡片撑高（图是卡片最后一块） */
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+}
+
+.openqa-words strong {
+  display: block;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.openqa-words span {
+  display: block;
   color: var(--text-subtle);
   font-size: 11px;
   font-weight: 900;
+  line-height: 1.3;
 }
 
-.openqa-hint-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* ---------- 贴底动作区：一行小字（状态都靠它说）→ 通栏麦克风 ----------
+   卡片外的固定底栏：白底微透、上沿一条细分割线 + 很淡的投影（同跟读页）。
+   录音 / 识别的状态都靠上面那行小字说：手指压在按钮正中间，小字在手指上方，是唯一看得见的反馈。
+   z-index 低于公共悬浮胶囊（80+）和弹窗（100+），不抢它们那一层 */
+.openqa-actions {
+  position: fixed;
+  z-index: 30;
+  bottom: 0;
+  left: 50%;
+  width: min(100%, 430px);
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid var(--line-soft);
+  box-shadow: 0 -10px 24px rgba(71, 57, 142, 0.06);
 }
 
-/* 关键词行：整行一条，左边汉字、右边「拼音 · 印尼语意思」。
-   390px 竖屏要一屏放得下，所以照词块的白底 + 2px 描边 + 硬底做成单行，
-   不做 64px 竖排大词块（那会把结果卡顶出屏幕）。它不是按钮，不接按下反馈。 */
-.openqa-hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-  min-height: 48px;
-  padding: 0 14px;
-  border: 2px solid var(--line-soft);
-  border-radius: var(--radius-option);
-  background: #ffffff;
-  box-shadow: 0 2px 0 var(--edge-quiet);
-}
-
-.openqa-hint-word {
-  color: var(--ink);
-  font-size: 15px;
-  font-weight: 900;
-  overflow-wrap: anywhere;
-}
-
-/* 拼音 + 印尼语意思打包成一条，中间用「·」隔开：「·」不会落在行尾 */
-.openqa-hint-note {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.openqa-hint-pinyin {
+/* 一行小字：状态的唯一可见反馈——待作答「按住说完松开 · Tahan, lepas setelah selesai」、
+   录音中「正在听…… · Sedang mendengar」、识别中「听出来了？· Sebentar ya…」、
+   出结果「再说一次 · Bicara lagi」。是换文案，不是藏起来（见 js） */
+.openqa-record-hint {
+  margin: 0 0 8px;
   color: var(--text-subtle);
-  font-size: 10px;
-  font-weight: 900;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+  text-align: center;
 }
 
-.openqa-hint-sep {
-  color: var(--hint-dot);
-  font-size: 9px;
-  font-style: normal;
-}
-
-/* 印尼语意思：斜体 + 更浅的灰 + 小一号，和拼音一眼分得开 */
-.openqa-hint-meaning {
-  color: var(--hint-meaning);
-  font-size: 9px;
-  font-style: italic;
-  font-weight: 600;
-}
-
-/* ---------- 按住说话：这页唯一的动作，与听音页提交键同款 ---------- */
+/* 按住说话：全页唯一主动作，与听音页提交键同款。
+   视觉上只有麦克风一个图标，名字（按住说话 / 正在录音 / 识别中 / 再说一次）靠 aria-label 给读屏（见 js） */
 .openqa-mic {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
   width: 100%;
-  min-height: 66px;
+  min-height: 76px;
   padding: 0 18px;
   border: 0;
   border-radius: var(--radius-button);
@@ -195,13 +206,12 @@
   box-shadow: 0 var(--edge-button-w) 0 var(--edge-button), 0 14px 26px rgba(79, 58, 224, 0.28);
   font-size: var(--text-button);
   font-weight: 900;
-  letter-spacing: 0.02em;
   cursor: pointer;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
-  transition: transform var(--dur-press) ease, box-shadow var(--dur-press) ease, background .2s ease;
+  transition: transform var(--dur-press) ease, box-shadow var(--dur-press) ease, background var(--dur-press) ease;
 }
 
 /* 按下：陷下去（底边从 6px 收到 2px） */
@@ -210,37 +220,32 @@
   box-shadow: 0 2px 0 var(--edge-button), 0 8px 16px rgba(79, 58, 224, 0.24);
 }
 
+/* 按钮里唯一的可见内容：麦克风（录音时由 js 换成红点） */
 .openqa-mic-icon {
-  font-size: 26px;
+  font-size: 30px;
   line-height: 1;
 }
 
-.openqa-mic-label {
-  overflow-wrap: anywhere;
-}
-
-/* 录音中：红 + 图标脉冲（状态动效，松开就停） */
+/* 录音中：红只在这一刻出现，加上红点（不跳柱子，同跟读页） */
 .openqa-mic.is-recording {
   background: linear-gradient(180deg, #ff7d8b, #e2465a);
   box-shadow: 0 6px 0 #c2333f, 0 14px 26px rgba(226, 70, 90, 0.26);
 }
 
-.openqa-mic.is-recording .openqa-mic-icon {
-  animation: openqaPulse 1s ease-in-out infinite;
-}
-
-/* 识别中：紫 + 更快的图标脉冲（固定 1 秒后就停） */
+/* 识别中：紫 + 按钮脉冲（状态动效，固定 1 秒，出结果就停） */
 .openqa-mic.is-recognizing {
   background: linear-gradient(180deg, #8d79ff, #6a55e8);
+  animation: openqaWait 1s ease-in-out infinite;
 }
 
-.openqa-mic.is-recognizing .openqa-mic-icon {
-  animation: openqaPulse .7s ease-in-out infinite;
+@keyframes openqaWait {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.78; }
 }
 
-/* 结果态：同一条大按钮原地换皮——白底浅描边的次要款【再说一次】。
-   大小、位置、圆角、字号都和「按住说话」一模一样，只是安静下来（不是禁用态，
-   按它才重录；重录只算练习，不再记账） */
+/* 结果态：同一条大按钮原地换皮——白底浅描边的次要款。键上没有字，名字靠 aria-label。
+   大小、位置、圆角都和「按住说话」一模一样，只是安静下来（不是禁用态，按它才重录；
+   重录只算练习，不再记账） */
 .openqa-mic.is-retry {
   border: 2px solid var(--line-soft);
   color: var(--text-quiet);
@@ -254,159 +259,115 @@
   box-shadow: 0 0 0 var(--edge-quiet);
 }
 
-@keyframes openqaPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.18); }
-}
-
-/* ---------- 假音量波形：只有录音中才占地方，纯 CSS 动画 ----------
-   静止 / 结果态把这一槽收成 0 高，整页才能在 390×800 一屏放得下 */
-.openqa-wave {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 4px;
-  height: 0;
-  margin-top: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity .2s ease;
-}
-
-.openqa-wave.is-visible {
-  height: 30px;
-  margin-top: 10px;
-  opacity: 1;
-}
-
-.openqa-wave-bar {
-  width: 6px;
-  height: 26px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ff9aa4, #e2465a);
-  transform: scaleY(.34);
-  transform-origin: center bottom;
-  animation: openqaWave .9s ease-in-out infinite;
-}
-
-.openqa-wave-bar:nth-child(2) { animation-delay: .12s; }
-.openqa-wave-bar:nth-child(3) { animation-delay: .24s; }
-.openqa-wave-bar:nth-child(4) { animation-delay: .36s; }
-.openqa-wave-bar:nth-child(5) { animation-delay: .48s; }
-
-@keyframes openqaWave {
-  0%, 100% { transform: scaleY(.34); }
-  50% { transform: scaleY(1); }
-}
-
-/* 按钮下面那行小字：怎么说，一句话讲完，不教点按 */
-.openqa-record-hint {
-  margin: 8px 0 0;
-  color: var(--text-subtle);
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1.55;
-  text-align: center;
-}
-
-/* 结果态：小字提示收起（卡片已经给出反馈，不再教怎么按；按【再说一次】回到初始时自己回来） */
-.openqa-card.is-result .openqa-record-hint {
-  display: none;
-}
-
-/* ---------- 学习卡：一句鼓励 + 句型框（这一页不打分，没有星级，也没有完成键） ---------- */
+/* ---------- 学习卡：一句鼓励 + 句型框（这一页不打分，没有星级，也没有完成键） ----------
+   位置：绝对定位在卡片下沿，往上压进约 13px（那一段被卡片吃掉）——不占位、不留空隙；
+   卡片 z-index 更高，滑动的全过程都被卡片下沿压着（能看到字被压掉半截）。
+   形状：扁平一张纸条——无厚度、无阴影、无描边，只有下方两个圆角；底色是这页的紫。
+   出场：往下滑约 30px，滑到位就停（同跟读页那条 keyframes）。 */
 .openqa-result {
-  margin-top: 14px;
-  padding: 14px;
-  border: 2px solid var(--plate-line);
-  border-radius: var(--radius-option);
-  background: #f8f6ff;
-  animation: openqaResultIn var(--dur-enter) var(--ease-enter);
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  /* 卡片自己有 2px 描边：左右让到 18，回执里的字才能和卡片内文同一根左轴 */
+  padding: 30px 18px 16px;
+  border-radius: 0 0 18px 18px;
+  background: #d9ceff;
+  animation: openqaReceiptIn .28s ease-out both;
 }
 
 .openqa-result:focus {
   outline: none;
 }
 
-@keyframes openqaResultIn {
-  from { opacity: 0; transform: translateY(8px); }
+@keyframes openqaReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* 鼓励只说「你开口了」这件事，不评对错 / 发音 */
+/* 鼓励只说「你开口了」这件事，不评对错 / 发音；直接放在紫底上。
+   和下面两行同一根左轴，不居中（同跟读页回执的规矩）。
+   自己不画盒子（底色 / 圆角由学习卡给），出场跟着学习卡一起滑，不再单独播动画 */
 .openqa-praise {
   margin: 0;
   color: var(--ink);
   font-size: 17px;
   font-weight: 900;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .openqa-praise-dot {
   margin: 0 6px;
-  color: var(--hint-dot);
+  color: #6b6390;
   font-size: 11px;
   font-style: normal;
 }
 
+/* 深紫底（#d9ceff）上浅灰会糊：印尼小字压深一档；中文深墨色不变 */
 .openqa-praise-id {
-  color: var(--text-subtle);
-  font-size: 13px;
+  color: #6b6390;
+  font-size: 12px;
   font-weight: 800;
 }
 
-.openqa-pattern-label {
-  margin: 0;
-  color: var(--text-subtle);
-  font-size: 11px;
-  font-weight: 900;
-}
-
+/* 中文句型：前缀 + 填空横线 + 句号一行走完；横线紧跟前缀，不顶到最右 */
 .openqa-pattern-text {
-  margin: 4px 0 0;
+  margin: 12px 0 0;
   color: var(--ink);
-  font-size: 21px;
+  font-size: 23px;
   font-weight: 900;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
+/* 填空横线：空的 inline-block，底边正好落在文字基线上（就是手写填空那条线） */
+.openqa-blank {
+  display: inline-block;
+  width: 104px;
+  margin: 0 4px 0 6px;
+  border-bottom: 3px solid #4a4270;
+}
+
+/* 印尼语翻译：斜体小字，压深一档；横线细一点、短一点 */
 .openqa-pattern-id {
-  margin: 3px 0 0;
-  color: var(--text-subtle);
+  margin: 4px 0 0;
+  color: #918bb0;
   font-size: 11px;
-  font-weight: 800;
-  line-height: 1.45;
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.openqa-blank-id {
+  display: inline-block;
+  width: 72px;
+  margin: 0 3px 0 6px;
+  border-bottom: 2px solid #6b6390;
 }
 
 @media (max-width: 360px) {
   .openqa-question {
-    font-size: 20px;
+    font-size: 24px;
   }
 
-  .openqa-mic {
-    min-height: 58px;
+  .openqa-words strong {
     font-size: 16px;
   }
 
-  .openqa-hint-word {
-    font-size: 13px;
+  .openqa-mic {
+    min-height: 68px;
   }
 
   .openqa-pattern-text {
-    font-size: 19px;
+    font-size: 20px;
   }
 }
 
-/* 更窄的屏塞不下「汉字 + 拼音·印尼语」一行时，关键词行改成两行竖排，
-   宁可多占一点高度，也不把拼音小字挤到溢出卡片 */
-@media (max-width: 380px) {
-  .openqa-hint {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 2px;
-    min-height: 52px;
-    padding: 6px 14px;
+/* 桌面预览：app-shell 有 16px 外边距和下方圆角，动作区跟着对齐，别悬在手机框外面 */
+@media (min-width: 700px) {
+  .openqa-actions {
+    bottom: 16px;
+    border-radius: 0 0 34px 34px;
   }
 }

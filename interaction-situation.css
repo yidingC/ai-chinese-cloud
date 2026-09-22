@@ -31,7 +31,7 @@
 /* 卡片比一屏短，右下角两个悬浮按钮（题型体验 / 演示·课中）需要滚一点才够得着：
    页面底部留出空间，同时保证它们不会压住卡片内容 */
 .page-content {
-  padding-bottom: 150px;
+  padding-bottom: 190px;
 }
 
 /* 读屏专用：视觉上不显示，无障碍播报照旧 */
@@ -47,7 +47,14 @@
   border: 0;
 }
 
+/* 卡片 + 回执条：条是卡片的下一层，平时整条压在卡片下沿后面 */
+.situation-stage {
+  position: relative;
+}
+
 .situation-card {
+  position: relative;
+  z-index: 1;
   padding: 16px 15px;
   border: 2px solid var(--line-card);
   border-radius: 28px;
@@ -159,7 +166,8 @@
 .situation-option-text {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 15px;
+  /* 长句选项：单独一档 18px（不拉到词块的 22px） */
+  font-size: 18px;
   font-weight: 900;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -202,16 +210,11 @@
 /* 对错只靠颜色表达：只给答对的那项一个勾，答错不打叉 */
 .situation-option.correct::after {
   flex: 0 0 auto;
-  display: grid;
   width: 22px;
   height: 22px;
-  place-items: center;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  background: var(--answer-correct);
-  font-size: 12px;
-  font-weight: 900;
-  content: "✓";
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
   animation: situationPop var(--dur-pop) var(--ease-pop);
 }
 
@@ -240,15 +243,21 @@
   cursor: not-allowed;
 }
 
-/* ---------- 结果条：只写事实，标签和 ✗ 都不出现 ---------- */
+/* ---------- 结果条：从卡片下沿滑出的回执条（最上面 13px 压在卡底下）；只写事实，标签和 ✗ 都不出现 ---------- */
 .situation-feedback {
-  margin-top: 15px;
-  padding: 15px 16px;
-  border: 2px solid transparent;
-  border-radius: 20px;
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 30px 18px 16px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: none;
   font-size: 12px;
   line-height: 1.6;
-  animation: situationFeedbackIn var(--dur-enter) var(--ease-enter);
+  animation: situationReceiptIn .28s ease-out both;
 }
 
 .situation-feedback:focus {
@@ -256,16 +265,12 @@
 }
 
 .situation-feedback.is-correct {
-  border-color: var(--answer-correct-edge);
-  background: var(--answer-correct-fill);
-  box-shadow: 0 4px 0 #d3f2e7;
+  background: #d4f3e9;
 }
 
 /* 框里装的是正确答案，不是错误提示：用中性紫，不用红（同补全句子页） */
 .situation-feedback.is-wrong {
-  border-color: #d9d3ee;
-  background: var(--select-fill);
-  box-shadow: 0 4px 0 #dad4f0;
+  background: #d9ceff;
 }
 
 .situation-feedback-title {
@@ -278,6 +283,17 @@
 
 .situation-feedback.is-correct .situation-feedback-title {
   color: var(--answer-correct-text);
+}
+
+/* 结果条里的行内小勾：同一支笔（15px），颜色跟着这一行；不是"答对"时不占位 */
+.situation-feedback-title [data-situation-feedback-icon]:not(:empty) {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  font-size: 0;
+  background: currentColor;
+  -webkit-mask: var(--check-pen) center / contain no-repeat;
+  mask: var(--check-pen) center / contain no-repeat;
 }
 
 .situation-feedback.is-wrong .situation-feedback-title {
@@ -308,8 +324,9 @@
   overflow-wrap: anywhere;
 }
 
-@keyframes situationFeedbackIn {
-  from { opacity: 0; transform: translateY(10px); }
+/* 回执条：从卡片底下往下滑 30px 到位 */
+@keyframes situationReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
   to { opacity: 1; transform: none; }
 }
 
@@ -338,6 +355,6 @@
   }
 
   .situation-option-text {
-    font-size: 13px;
+    font-size: 16px;
   }
 }

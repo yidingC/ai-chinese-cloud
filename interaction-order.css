@@ -1,9 +1,32 @@
+/* 答对的绿：与其它题型页同一套（尺子＝听音选词那颗勾）。
+   --success 是课堂页 / 平台的颜色，题型页不许拿它当答对色。 */
+:root {
+  --answer-correct: #1fbf8f;
+  --answer-correct-fill: #e8fbf3;
+}
+
 .page-content {
   padding-bottom: 190px;
 }
 
+.order-stage {
+  position: relative;
+}
+
 .order-card {
   /* 题面卡（尺子）：圆角 28、描边 2px、硬底边 6px、内边距 18/16/16 */
+  padding: 18px 16px 16px;
+  border: 2px solid #eceaf4;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 6px 0 #e6e3ef, 0 22px 40px rgba(71, 57, 142, 0.08);
+}
+
+/* 下半部分：答题 + 词库 + 按钮，同题面卡一把尺子 */
+.order-board {
+  position: relative;
+  z-index: 1;
+  margin-top: 16px;
   padding: 18px 16px 16px;
   border: 2px solid #eceaf4;
   border-radius: 28px;
@@ -37,7 +60,8 @@
 }
 
 .order-answer-area {
-  margin-top: 16px;
+  /* 卡里第一块，卡片自己的 18px 上内边距够了 */
+  margin-top: 0;
 }
 
 .order-answer-line {
@@ -45,8 +69,8 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 8px;
-  /* 一条 64px 词块的高度（4 + 64 + 10），空行与放词后不跳动 */
-  min-height: 78px;
+  /* 一条 68px 词块的高度（4 + 68 + 10），空行与放词后不跳动 */
+  min-height: 82px;
   padding: 4px 2px 10px;
   border-bottom: 2px solid #e2dff0;
 }
@@ -71,8 +95,8 @@
   gap: 2px;
   /* 第十节词块规格（B 档 66px）：任何词块不窄于 66px，长词自然变宽，不逐词特判 */
   min-width: 66px;
-  min-height: 64px;
-  padding: 8px 14px;
+  min-height: 68px;
+  padding: 10px 14px;
   border: 2px solid #e9e7f2;
   border-radius: 20px;
   background: #ffffff;
@@ -82,14 +106,15 @@
 }
 
 .order-tile strong {
-  font-size: 15px;
+  /* 可点字块里的汉字：基准 22px（第十节），不再缩到 15px */
+  font-size: 22px;
   font-weight: 900;
   line-height: 1.2;
 }
 
 .order-tile small {
   color: #8f8aa3;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   line-height: 1.2;
   white-space: nowrap;
@@ -140,8 +165,8 @@
 }
 
 .order-answer-word.is-correct {
-  border-color: rgba(34, 173, 131, 0.5);
-  background: #e9faf4;
+  border-color: var(--answer-correct);
+  background: var(--answer-correct-fill);
 }
 
 .order-answer-word.is-wrong {
@@ -153,22 +178,10 @@
   position: absolute;
   top: -7px;
   right: -7px;
-  display: grid;
-  width: 18px;
-  height: 18px;
-  place-items: center;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 900;
-}
-
-.order-answer-word.is-correct .order-tile-mark {
-  background: var(--success);
-}
-
-.order-answer-word.is-wrong .order-tile-mark {
-  background: var(--danger);
+  background: var(--answer-correct) var(--check-pen) center / 18px 18px no-repeat;
 }
 
 .order-bank-tile:disabled {
@@ -255,24 +268,45 @@
 }
 
 .order-feedback {
-  /* 结果条（尺子）：圆角 20、描边 2px、硬底边 4px、内边距 15/16 */
-  margin-top: 15px;
-  padding: 15px 16px;
-  border: 2px solid transparent;
-  border-radius: 20px;
+  /* 回执条：从答题卡下沿滑出，最上面 13px 压在卡底下 */
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 30px 18px 16px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  box-shadow: none;
   font-size: 12px;
   line-height: 1.6;
+  animation: orderReceiptIn .28s ease-out both;
 }
 
 .order-feedback:focus {
   outline: none;
 }
 
-/* 框里装的是正确答案，不是错误提示：用中性紫，不用红（同补全句子页） */
+.order-feedback.is-correct {
+  background: #d4f3e9;
+}
+
+/* 框里装的是正确答案，不是错误提示：用中性紫，不用红 */
 .order-feedback.is-wrong {
-  border-color: #d9d3ee;
-  background: #f1eeff;
-  box-shadow: 0 4px 0 #dad4f0;
+  background: #d9ceff;
+}
+
+@keyframes orderReceiptIn {
+  from {
+    opacity: .3;
+    transform: translateY(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* 正确句子直接写出来，不用词块格式 */
@@ -297,18 +331,23 @@
     font-size: 18px;
   }
 
+  /* 窄屏不缩字：一行放不下就换行（块下限 66px 不动） */
   .order-tile {
-    min-height: 56px;
-    padding: 6px 12px;
+    min-height: 64px;
+    padding: 8px 12px;
   }
 
   .order-tile strong {
-    font-size: 13px;
+    font-size: 20px;
+  }
+
+  .order-tile small {
+    font-size: 10px;
   }
 
   .order-answer-line {
-    /* 窄屏 56px 词块：4 + 56 + 10 */
-    min-height: 70px;
+    /* 窄屏 64px 词块：4 + 64 + 10 */
+    min-height: 78px;
   }
 
   .order-actions {

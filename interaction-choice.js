@@ -242,6 +242,14 @@
     });
   }
 
+  /* 矮屏退路：动画落定后回执底边要是还在屏幕下沿外，补滚一小段让它完整露出来；
+     常见屏（≥700 高）算下来不用滚，页面不动。 */
+  function revealReceipt() {
+    if (!el.feedback || el.feedback.classList.contains("hidden") || typeof global.scrollBy !== "function") return;
+    const overlap = el.feedback.getBoundingClientRect().bottom + 12 - global.innerHeight;
+    if (overlap > 0) global.scrollBy({ top: overlap, behavior: "smooth" });
+  }
+
   function submit() {
     if (submitted || !selectedId) return;
     const chosen = tiles.filter(function (tile) { return tile.id === selectedId; })[0];
@@ -255,7 +263,7 @@
     const isCorrect = chosen.id === correctTile.id;
     const firstTry = isCorrect && attempts === 1;
     const tier = isCorrect ? (firstTry ? "correctFirstTry" : "correct") : "wrong";
-    const praise = typeof copy.draw === "function" ? copy.draw(tier) : null;
+    const praise = typeof copy.draw === "function" ? copy.draw(tier, { single: true }) : null;
     lastCorrect = isCorrect;
 
     // 判分时收起选中态，只留对错；之后不能再改
@@ -277,7 +285,10 @@
 
     showFeedback(isCorrect, correctTile);
     if (el.feedback && typeof el.feedback.scrollIntoView === "function") {
-      el.feedback.scrollIntoView({ block: "center" });
+      /* 一屏放得下时不动页面；回执条被屏幕下沿裁掉才滚最小距离（跟其他页同一条退路） */
+      el.feedback.scrollIntoView({ block: "nearest" });
+      /* 出场的 0.28s 还没跑完，这会儿量到的位置是收在半截的；等它落定再补看一眼 */
+      global.setTimeout(revealReceipt, 300);
     }
 
     completeOnce(); /* 课堂模式记进度；完成弹窗两种模式都走，跳转由弹窗按钮负责 */

@@ -25,19 +25,24 @@
     </header>
 
     <main class="page page-content">
-      <section class="choice-card" data-choice-card aria-labelledby="choice-word">
-        <div class="choice-stem">
-          <p class="choice-pinyin" data-choice-pinyin>Yì bēi chá</p>
-          <h3 class="choice-question" id="choice-word" data-choice-word>一杯茶</h3>
-        </div>
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
+      <div class="choice-stage">
+        <section class="choice-card" data-choice-card aria-labelledby="choice-word">
+          <div class="choice-stem">
+            <p class="choice-pinyin" data-choice-pinyin>Yì bēi chá</p>
+            <h3 class="choice-question" id="choice-word" data-choice-word>一杯茶</h3>
+          </div>
 
-        <div class="choice-grid" role="group" aria-labelledby="choice-word" data-choice-options></div>
+          <div class="choice-grid" role="group" aria-labelledby="choice-word" data-choice-options></div>
 
-        <button type="button" class="primary-button btn-stacked" data-choice-submit disabled>
-          <span data-choice-submit-label>提交</span>
-          <span class="btn-id" lang="id" data-choice-submit-label-id>Kirim</span>
-        </button>
+          <button type="button" class="primary-button btn-stacked" data-choice-submit disabled>
+            <span data-choice-submit-label>提交</span>
+            <span class="btn-id" lang="id" data-choice-submit-label-id>Kirim</span>
+          </button>
+        </section>
 
+        <!-- 回执条：卡片的下一层兄弟。未提交时 hidden；提交后从卡片底下滑出——
+             答对＝绿底（✓ 答对了！+ 正确图的印尼语意思），答错＝粉底，只留答案行 -->
         <div class="choice-feedback hidden" role="status" aria-live="polite" data-choice-feedback>
           <strong class="choice-feedback-title">
             <span aria-hidden="true" data-choice-feedback-icon></span>
@@ -45,7 +50,7 @@
           </strong>
           <p class="choice-feedback-answer hidden" data-choice-feedback-answer></p>
         </div>
-      </section>
+      </div>
     </main>
   </div>
 

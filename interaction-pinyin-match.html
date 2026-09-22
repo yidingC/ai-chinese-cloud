@@ -25,24 +25,29 @@
     </header>
 
     <main class="page page-content">
-      <section class="py-card" aria-label="拼音、汉字和意思配对作答区">
-        <div class="py-plate">
-          <p class="py-step is-current" id="py-word-label" data-py-step-word>① 看拼音选汉字 · Pilih hanzi</p>
-          <p class="py-pinyin" data-py-pinyin>shū</p>
-        </div>
+      <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，选错才滑出来。
+           容器叫 py-receipt-stage —— .py-stage 已经是卡片里"步骤②"那块的名字。 -->
+      <div class="py-receipt-stage">
+        <section class="py-card" aria-label="拼音、汉字和意思配对作答区">
+          <div class="py-plate">
+            <p class="py-step is-current" id="py-word-label" data-py-step-word>看拼音选汉字 · Pilih hanzi</p>
+            <p class="py-pinyin" data-py-pinyin>shū</p>
+          </div>
 
-        <div class="py-options py-options-word" role="group" aria-labelledby="py-word-label" data-py-words></div>
+          <div class="py-options py-options-word" role="group" aria-labelledby="py-word-label" data-py-words></div>
 
-        <div class="py-stage hidden" data-py-meaning-stage>
-          <p class="py-step is-current" id="py-meaning-label" data-py-step-meaning>② 选意思 · Pilih arti</p>
-          <div class="py-options py-options-meaning" role="group" aria-labelledby="py-meaning-label" data-py-meanings></div>
-        </div>
+          <div class="py-stage hidden" data-py-meaning-stage>
+            <p class="py-step is-current" id="py-meaning-label" data-py-step-meaning>选意思 · Pilih arti</p>
+            <div class="py-options py-options-meaning" role="group" aria-labelledby="py-meaning-label" data-py-meanings></div>
+          </div>
+        </section>
 
+        <!-- 回执条：卡片的下一层兄弟。没选错时 hidden；选错后从卡片底下滑出 -->
         <div class="py-feedback hidden" role="status" aria-live="polite" data-py-feedback>
           <strong class="py-feedback-title" data-py-feedback-title></strong>
           <p class="py-feedback-copy" data-py-feedback-copy></p>
         </div>
-      </section>
+      </div>
 
       <ol class="py-slots" data-py-done-list aria-label="已配好的组合">
         <li class="py-slot" data-py-slot="1" aria-hidden="true"></li>

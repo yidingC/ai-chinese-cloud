@@ -1,10 +1,11 @@
 /* 开放问答 · interaction-open-qa.html 页面脚本
    状态机：待作答 → 录音中 → 识别中（固定 1 秒）→ 学习卡（结果态）。
-   假流程：按住「🎤 按住说话」出现假波形，松开（或再点一下）后转 1 秒「识别中…」，
-   然后给一句鼓励和句型提示。这一页不打分，也没有【完成】键——录音本身就是交卷：
+   假流程：按住贴底动作区那颗麦克风（录音时键上换成红点，不跳柱子），松开（或再点一下）后
+   转 1 秒「识别中」，然后学习卡从卡片下沿滑出来——一句鼓励 + 句型提示。
+   这一页不打分，也没有【完成】键——录音本身就是交卷：
    学习卡一出现就记账；课堂模式由公共脚本按固定延迟自动跳回课堂，演示模式约 2 秒后
-   自动弹「收到啦」弹窗。结果态那颗键原地换成安静款【再说一次】，按它才重录
-   （重录只算练习，不重复记账；重录时撤销还没弹的弹窗，出新结果后重新计时）。
+   自动弹「收到啦」弹窗。结果态那颗键原地换成安静款（白底麦克风），按它才重录
+    （重录只算练习，不重复记账；重录时撤销还没弹的弹窗，出新结果后重新计时）。
    全程不调用麦克风、不申请授权、不发声音。
    进度记账由 shared/activity-bridge.js 负责（课堂跳转也交给它），本页只做界面并调用 finish()。 */
 (function (global) {
@@ -14,6 +15,14 @@
   const TAP_MS = 260;                 // 按下不超过这么久算「点一下」
   const CLASS_REDIRECT_DELAY = 2600;  // 课堂模式：公共脚本记账后按这个延迟自动跳回课堂（节奏同完成键时代）
   const MODAL_DELAY = 2000;           // 演示模式：学习卡先出场，弹窗约 2 秒后到（同选择题节奏）
+  /* 动作区那行小字：状态的唯一可见反馈（录音时手指压在按钮上，只有这行字露在外面）。
+     四态四句，全是换文案，不是藏起来 */
+  const HINT = {
+    idle: "按住说完松开 · Tahan, lepas setelah selesai",
+    recording: "正在听…… · Sedang mendengar",
+    recognizing: "听出来了？· Sebentar ya…",
+    result: "再说一次 · Bicara lagi"
+  };
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
@@ -22,12 +31,21 @@
     id: "zhoumo-xihuan-zuo-shenme",
     prompt: "你周末喜欢做什么？",
     promptId: "Akhir pekan kamu suka melakukan apa?",
-    hints: [
+    /* 图下那三列小词：顺序和插画里三个图形一一对应，不能换。
+       meaningId 只留给以后接接口用，页面上不再印出来——意思图形已经说完了 */
+    words: [
       { text: "听音乐", pinyin: "tīng yīnyuè", meaningId: "mendengarkan musik" },
       { text: "打篮球", pinyin: "dǎ lánqiú", meaningId: "bermain basket" },
       { text: "和朋友玩", pinyin: "hé péngyou wán", meaningId: "bermain dengan teman" }
     ],
+    /* 句型框拆成「前缀 + 填空横线 + 句号」：前后缀写进 html 里那两个 span，
+       中间那条横线是空 span（见 startQuestion）；pattern / patternId 是给读屏播报的整句，
+       改前后缀时记得一起改，别让念白和屏幕上的字对不上 */
+    patternPrefix: "我周末喜欢",
+    patternSuffix: "。",
     pattern: "我周末喜欢 ______ 。",
+    patternIdPrefix: "Pada akhir pekan saya suka",
+    patternIdSuffix: ".",
     patternId: "Pada akhir pekan saya suka ______ .",
     /* 只夸「开口了」这件事，不夸结果（没有真的在听学生说） */
     praise: { zh: "说得不错！", id: "Bagus!" }
@@ -52,16 +70,18 @@
   }
 
   function cache() {
-    el.card = document.querySelector(".openqa-card");
     el.question = document.querySelector("[data-openqa-question]");
     el.questionId = document.querySelector("[data-openqa-question-id]");
-    el.hints = document.querySelector("[data-openqa-hints]");
+    el.words = document.querySelector("[data-openqa-words]");
     el.mic = document.querySelector("[data-openqa-mic]");
-    el.micLabel = document.querySelector("[data-openqa-mic-label]");
-    el.wave = document.querySelector("[data-openqa-wave]");
+    el.micIcon = document.querySelector("[data-openqa-mic-icon]");
+    el.hint = document.querySelector("[data-openqa-hint]");
+    el.pageContent = document.querySelector(".page-content");
     el.result = document.querySelector("[data-openqa-result]");
-    el.pattern = document.querySelector("[data-openqa-pattern]");
-    el.patternId = document.querySelector("[data-openqa-pattern-id]");
+    el.patternPrefix = document.querySelector("[data-openqa-pattern-prefix]");
+    el.patternSuffix = document.querySelector("[data-openqa-pattern-suffix]");
+    el.patternIdPrefix = document.querySelector("[data-openqa-pattern-id-prefix]");
+    el.patternIdSuffix = document.querySelector("[data-openqa-pattern-id-suffix]");
     el.praise = document.querySelector("[data-openqa-praise]");
     el.praiseId = document.querySelector("[data-openqa-praise-id]");
     el.announcer = document.querySelector("[data-openqa-announcer]");
@@ -90,70 +110,55 @@
     setText(el.announcer, text);
   }
 
-  /* 关键词：汉字 + 一条「拼音 · 印尼语意思」，只展示、点不动 */
-  function renderHints() {
-    if (!el.hints) return;
-    el.hints.innerHTML = "";
-    QUESTION.hints.forEach(function (hint) {
+  /* 图下的小词：汉字 + 拼音两行，意思交给上面的插画（不再列印尼语）。
+     三个 li 和一个 ul，读屏按列表念；列宽各 1/3，和图上三个图形一一对齐（见 css）。
+     纯展示、点不动 */
+  function renderWords() {
+    if (!el.words) return;
+    el.words.innerHTML = "";
+    QUESTION.words.forEach(function (word) {
       const item = document.createElement("li");
-      item.className = "openqa-hint";
 
-      const word = document.createElement("strong");
-      word.className = "openqa-hint-word";
-      word.textContent = hint.text;
+      const hanzi = document.createElement("strong");
+      hanzi.textContent = word.text;
 
-      const note = document.createElement("span");
-      note.className = "openqa-hint-note";
+      const pinyin = document.createElement("span");
+      pinyin.lang = "zh-Latn-pinyin";
+      pinyin.textContent = word.pinyin;
 
-      if (hint.pinyin) {
-        const pinyin = document.createElement("span");
-        pinyin.className = "openqa-hint-pinyin";
-        pinyin.lang = "zh-Latn-pinyin";
-        pinyin.textContent = hint.pinyin;
-        note.appendChild(pinyin);
-      }
-
-      if (hint.pinyin && hint.meaningId) {
-        const sep = document.createElement("i");
-        sep.className = "openqa-hint-sep";
-        sep.setAttribute("aria-hidden", "true");
-        sep.textContent = "·";
-        note.appendChild(sep);
-      }
-
-      if (hint.meaningId) {
-        const meaning = document.createElement("span");
-        meaning.className = "openqa-hint-meaning";
-        meaning.lang = "id";
-        meaning.textContent = hint.meaningId;
-        note.appendChild(meaning);
-      }
-
-      item.appendChild(word);
-      item.appendChild(note);
-      el.hints.appendChild(item);
+      item.appendChild(hanzi);
+      item.appendChild(pinyin);
+      el.words.appendChild(item);
     });
   }
 
-  /* 按钮、波形都跟着状态走：待作答 / 录音中 / 识别中 / 出学习卡 */
+  /* 按钮和小字的样子跟着状态走：待作答 / 录音中 / 识别中 / 出学习卡。
+     按钮视觉上只有一个麦克风（没有文字），名字必须落在 aria-label 上——
+     否则用屏幕朗读的学生会遇到一个没有名字的按钮 */
   function paintMic() {
     if (!el.mic) return;
     const recording = micState === "recording";
     const recognizing = micState === "recognizing";
-    /* 结果态：紫色大按钮降级成次要款【再说一次】（照跟读页）——键不灰、能再录 */
+    /* 结果态：紫色大按钮降级成次要款（白色那档同样不加字）——键不灰、能再录 */
     const retry = micState === "result";
-    if (el.card) el.card.classList.toggle("is-result", retry);
     el.mic.classList.toggle("is-recording", recording);
     el.mic.classList.toggle("is-recognizing", recognizing);
     el.mic.classList.toggle("is-retry", retry);
     el.mic.setAttribute("aria-pressed", recording ? "true" : "false");
     el.mic.setAttribute("aria-busy", recognizing ? "true" : "false");
-    setText(el.micLabel, recording
-      ? "正在录音…"
+    el.mic.setAttribute("aria-label", recording
+      ? "正在录音"
       : recognizing
-        ? "识别中…"
+        ? "识别中"
         : retry ? "再说一次" : "按住说话");
-    if (el.wave) el.wave.classList.toggle("is-visible", recording);
+    setText(el.micIcon, recording ? "🔴" : "🎤");
+    setText(el.hint, recording
+      ? HINT.recording
+      : recognizing
+        ? HINT.recognizing
+        : retry ? HINT.result : HINT.idle);
+    /* 结果态给页面底部多留一点滚动空间（见 css 的 .page-content.has-result） */
+    if (el.pageContent) el.pageContent.classList.toggle("has-result", retry);
   }
 
   /* 按下（待作答或结果态都可）：重录时撤掉上一轮还没弹的自动弹窗，收起旧学习卡 */
@@ -189,9 +194,21 @@
       if (typeof el.result.focus === "function") el.result.focus({ preventScroll: true });
       /* 一屏放得下时不动页面；实在放不下才滚最小距离（不强行居中，免得松手就跳一下） */
       if (typeof el.result.scrollIntoView === "function") el.result.scrollIntoView({ block: "nearest" });
+      /* 动作区是固定定位，浏览器不知道它盖住了什么：等滑出动画跑完再看一眼（见 revealAboveBar） */
+      global.setTimeout(revealAboveBar, 320);
     }
     announce("说完了。" + QUESTION.praise.zh + "你可以这样说：" + QUESTION.pattern);
     submitOnce();
+  }
+
+  /* 矮屏退路：学习卡滑到位后，底边要是还压在动作区后面，就往上滚一点把它完整露出来；
+     常见屏算下来不用滚，页面不动 */
+  function revealAboveBar() {
+    if (micState !== "result" || !el.result) return;
+    const bar = document.querySelector(".openqa-actions");
+    if (!bar || typeof global.scrollBy !== "function") return;
+    const overlap = el.result.getBoundingClientRect().bottom + 16 - bar.getBoundingClientRect().top;
+    if (overlap > 0) global.scrollBy({ top: overlap, behavior: "smooth" });
   }
 
   /* 交卷：只记第一次（重录只算练习）。课堂模式记账后由公共脚本到点自动回课堂，页面不弹窗；
@@ -315,10 +332,13 @@
     setText(el.questionId, QUESTION.promptId);
     setText(el.praise, QUESTION.praise.zh);
     setText(el.praiseId, QUESTION.praise.id);
-    setText(el.pattern, QUESTION.pattern);
-    setText(el.patternId, QUESTION.patternId);
+    /* 句型框只写前后缀：中间那条填空横线是 html 里的空 span，整段 setText 会把它冲掉 */
+    setText(el.patternPrefix, QUESTION.patternPrefix);
+    setText(el.patternSuffix, QUESTION.patternSuffix);
+    setText(el.patternIdPrefix, QUESTION.patternIdPrefix);
+    setText(el.patternIdSuffix, QUESTION.patternIdSuffix);
 
-    renderHints();
+    renderWords();
     setHidden(el.result, true);
     micState = "idle";
     paintMic();

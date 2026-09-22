@@ -70,6 +70,19 @@
   min-height: auto;
 }
 
+/* ---------- 进度：不上屏，只报给读屏软件（同连线配对的播报区做法） ---------- */
+.memory-announcer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
 /* ---------- 棋盘 ---------- */
 .memory-grid {
   display: grid;

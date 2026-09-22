@@ -1,9 +1,11 @@
 /* 看图说话 · interaction-picture-talk.html 页面脚本
    状态机：待作答 → 录音中 → 识别中 → 出学习卡（＝交卷）→ 已说完。
-   录音和识别都是假的：不碰麦克风、不弹授权框、不发出任何声音；
+   录音和识别都是假的：不碰麦克风、不弹授权框、不发出任何声音；录音中也不跳柱子（没有假波形）。
    假识别固定 1 秒，整段假流程不超过 2 秒。这一页没有对错：录音即交卷，没有「完成」按钮。
    按住说话：按住超过 350ms 再松开就算说完了；也支持点一下开始、再点一下结束。
-   说完后按钮变成安静款「再说一次」：按下才重录，不自动开录；记账只记第一次。
+   说完后按钮原地变成安静款「再说一次」：按下才重录，不自动开录；记账只记第一次。
+   状态都在贴底动作区那行小字里（见 HINT），按钮视觉上只有图标，名字落在 aria-label 上。
+   学习卡是卡片的下一层，出结果时从卡片下沿滑出来（同跟读模仿页的回执条）。
    图槽、参考答案都按可替换字段写：图片路径一填、识别接上，页面代码不用重写。
    出结果就交卷：两种模式都在约 2 秒后弹 shared/feedback-modal.js 的公共弹窗，
    课堂模式下由弹窗按钮跳回课堂（进度记账在 shared/activity-bridge.js）。 */
@@ -14,6 +16,14 @@
   const RECOGNIZE_MS = 1000;           // 假识别固定 1 秒
   const SOLO_MODAL_DELAY = 2000;       // 演示模式：出结果后留 2 秒看反馈，再自动弹「收到啦」（同听音页节奏）
   const CHEER = { zh: "说得不错！", id: "Bagus!" };  // 只夸「开口说了」，不评结果（这一页不打分）
+  /* 动作区那行小字：状态的唯一可见反馈（录音时手指压在按钮上，只有这行字露在外面）。
+     四态四句，全是换文案，不是藏起来 */
+  const HINT = {
+    idle: "按住说完松开 · Tahan, lepas setelah selesai",
+    recording: "正在听…… · Sedang mendengar",
+    recognizing: "听出来了？· Sebentar ya…",
+    result: "再说一次 · Bicara lagi"
+  };
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
@@ -54,13 +64,14 @@
     el.slot = document.querySelector("[data-picture-talk-slot]");
     el.hint = document.querySelector("[data-picture-talk-hint]");
     el.mic = document.querySelector("[data-picture-talk-mic]");
-    el.micLabel = document.querySelector("[data-picture-talk-mic-label]");
-    el.wave = document.querySelector("[data-picture-talk-wave]");
+    el.micIcon = document.querySelector("[data-picture-talk-mic-icon]");
+    el.recordHint = document.querySelector("[data-picture-talk-record-hint]");
     el.card = document.querySelector(".picture-talk-card");
     el.result = document.querySelector("[data-picture-talk-result]");
     el.answer = document.querySelector("[data-picture-talk-answer]");
     el.answerId = document.querySelector("[data-picture-talk-answer-id]");
     el.cheer = document.querySelector("[data-picture-talk-cheer]");
+    el.cheerId = document.querySelector("[data-picture-talk-cheer-id]");
     el.announcer = document.querySelector("[data-picture-talk-announcer]");
   }
 
@@ -112,25 +123,39 @@
     el.slot.appendChild(inner);
   }
 
-  /* 按钮、波形、朗读文案都跟着状态走：待作答 / 录音中 / 识别中 / 已说完 */
+  /* 鼓励行：中文大字 + 「·」+ 印尼小字，两半各自成节点（字号不同，见 css）。
+     只夸「开口说了」，不评结果；读屏那份念白在 announce 里，和这里无关 */
+  function renderCheer() {
+    setText(el.cheer, CHEER.zh);
+    setText(el.cheerId, CHEER.id);
+  }
+
+  /* 按钮、小字都跟着状态走：待作答 / 录音中 / 识别中 / 已说完。
+     按钮视觉上只剩一个图标（没有文字），名字必须落在 aria-label 上——
+     否则用屏幕朗读的学生会遇到一个没有名字的按钮 */
   function paintMic() {
     if (!el.mic) return;
     const recording = micState === "recording";
     const recognizing = micState === "recognizing";
+    const done = micState === "done";
     el.mic.classList.toggle("is-recording", recording);
     el.mic.classList.toggle("is-recognizing", recognizing);
     /* 说完：紫色大按钮降级成安静款「再说一次」（不禁用，按一下才重录） */
-    el.mic.classList.toggle("is-retry", micState === "done");
-    /* 结果态：按钮下面那行小字收走（初始态还留着） */
-    if (el.card) el.card.classList.toggle("is-result", micState === "done");
+    el.mic.classList.toggle("is-retry", done);
+    if (el.card) el.card.classList.toggle("is-result", done);
     el.mic.setAttribute("aria-pressed", recording ? "true" : "false");
     el.mic.setAttribute("aria-busy", recognizing ? "true" : "false");
-    setText(el.micLabel, recording
-      ? "正在录音…"
+    el.mic.setAttribute("aria-label", recording
+      ? "正在录音"
       : recognizing
-        ? "识别中…"
-        : micState === "done" ? "再说一次" : "按住说话");
-    if (el.wave) el.wave.classList.toggle("is-visible", recording);
+        ? "识别中"
+        : done ? "再说一次" : "按住说话");
+    setText(el.micIcon, recording ? "🔴" : "🎤");
+    setText(el.recordHint, recording
+      ? HINT.recording
+      : recognizing
+        ? HINT.recognizing
+        : done ? HINT.result : HINT.idle);
   }
 
   /* 按下：只改状态和动效，不碰麦克风 */
@@ -162,7 +187,8 @@
     if (el.result) {
       el.result.classList.remove("hidden");
       if (typeof el.result.focus === "function") el.result.focus({ preventScroll: true });
-      if (typeof el.result.scrollIntoView === "function") el.result.scrollIntoView({ block: "center" });
+      /* 学习卡从卡片下沿滑出来：把它带进视野就好，别把卡片整块推走；矮屏装不下允许滚动 */
+      if (typeof el.result.scrollIntoView === "function") el.result.scrollIntoView({ block: "nearest" });
     }
     submitResult();
   }
@@ -270,7 +296,7 @@
     setHidden(el.answerId, !QUESTION.answerId);
 
     renderPictureSlot();
-    setText(el.cheer, CHEER.zh + " · " + CHEER.id);
+    renderCheer();
     paintMic();
     if (el.result) el.result.classList.add("hidden");
     announce("待作答。" + QUESTION.prompt);

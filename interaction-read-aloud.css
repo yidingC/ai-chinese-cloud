@@ -1,17 +1,19 @@
 /* 跟读模仿（占位版）· interaction-read-aloud.html 专用样式
    这页只有一个说话的人：陪读熊猫。它说的话就在大话语盒这个气泡里，气泡的小尾巴朝着它。
-   版面：熊猫 → 气泡（你好 / nǐ hǎo，出结果多一行鼓励）→ 听范读 → 按住说话 → 一行小字。
+   版面：卡片（熊猫 + 气泡）＋ 贴底动作区（一行小字 → 通栏麦克风）。
+   回执条是卡片的下一层兄弟：平时整条压进卡片下沿后面，出结果才往下滑出来。
    尺子与黄金样板 interaction-choice.css / 同批听音页对齐：顶部变量整块照抄，
    不自造颜色 / 厚度 / 时长。
    动效（规范第十二节，任何时刻同屏只有一组在循环）——
    · 常驻 · 角色：熊猫呼吸 readAloudPandaBreathe（3.8s，全页唯一的循环动效，只在静止 / 结果时转）；
-   · 状态 · 进行中：录音的假波形 readAloudWave、识别中的按钮脉冲 readAloudWait；
-   · 一次性：入场轻弹 readAloudPandaIn、录音前倾 readAloudPandaLean、读完跳一下 readAloudPandaHop。
+   · 状态 · 进行中：识别中的按钮脉冲 readAloudWait（录音时只有按钮变红 + 红点，不再有波形）；
+   · 一次性：入场轻弹 readAloudPandaIn、录音前倾 readAloudPandaLean、读完跳一下 readAloudPandaHop、
+     回执条滑出 readAloudReceiptIn（滑到位就停，不再动）。
    录音、识别、弹窗打开时呼吸都停；弹窗关掉或"再读一次"后恢复。 */
 
 :root {
   /* 熊猫出题（规范第四节）：表情只写在这一处，将来换插画只替换这个变量 */
-  --avatar-size: 52px;
+  --avatar-size: 68px;
   --avatar-glyph: "🐼";
   --avatar-fill: linear-gradient(145deg, #eeeaff, #dff7f2);
 
@@ -55,11 +57,10 @@
   --ease-pop: cubic-bezier(.2, .9, .3, 1.25);
 }
 
-/* 与开放问答同一把尺子：正文只撑到「屏幕 − 假状态栏 − 顶栏」，不再留听音页那 160px 缓冲
-   （卡片最后一件事是绿条，滚到底时它始终在右下角两个小胶囊上方） */
+/* 正文只撑到「屏幕 − 假状态栏 − 顶栏」；底部给贴底动作区留出地方，别让卡片被压住 */
 .page-content {
   min-height: calc(100svh - 92px);
-  padding-bottom: 12px;
+  padding-bottom: calc(170px + env(safe-area-inset-bottom));
 }
 
 /* ---------- 页面底子（与听音页同一套） ---------- */
@@ -91,10 +92,17 @@
   white-space: nowrap;
 }
 
-/* ---------- 卡片：熊猫 → 大话语盒 → 听范读 → 按住说话 → 一行小字 ----------
-   内边距与块间空当照开放问答那把尺子：16 / 16 / 14，块与块之间 12 */
+/* 卡片 + 回执条的定位上下文：回执条绝对定位在卡片下沿，卡片压在它上面 */
+.read-aloud-stage {
+  position: relative;
+}
+
+/* ---------- 卡片：只装题面（熊猫 + 气泡）；按钮那一组已经搬到贴底动作区 ----------
+   内边距照开放问答那把尺子：16 / 16 / 16，块与块之间 12 */
 .read-aloud-card {
-  padding: 16px 16px 14px;
+  position: relative;
+  z-index: 1;
+  padding: 16px 16px 16px;
   border: 2px solid var(--line-card);
   border-radius: var(--radius-card);
   background: #ffffff;
@@ -133,7 +141,7 @@
     readAloudPandaBreathe 3.8s ease-in-out .48s infinite;
 }
 
-/* 录音 / 识别：凑近听，保持住；这段时间呼吸停（循环动效让给波形和按钮脉冲） */
+/* 录音 / 识别：凑近听，保持住；这段时间呼吸停（循环动效让给按钮脉冲） */
 .read-aloud-card.is-recording .read-aloud-panda,
 .read-aloud-card.is-recognizing .read-aloud-panda {
   animation: readAloudPandaLean .24s var(--ease-pop) both;
@@ -169,7 +177,7 @@
 .read-aloud-plate {
   position: relative;
   margin-bottom: 12px;
-  padding: 16px 14px 17px;
+  padding: 20px 16px 20px;
   border-radius: var(--radius-option);
   background: var(--surface-page);
   text-align: center;
@@ -193,7 +201,7 @@
   min-width: 0;
   margin: 0;
   color: var(--ink);
-  font-size: 42px;
+  font-size: 56px;
   font-weight: 900;
   line-height: 1.15;
   letter-spacing: 0.08em;
@@ -204,7 +212,7 @@
 .read-aloud-pinyin {
   margin: 6px 0 0;
   color: var(--text-subtle);
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 900;
   line-height: 1.4;
   letter-spacing: 0.06em;
@@ -262,14 +270,33 @@
   50% { transform: scale(1.18); }
 }
 
-/* 按住说话：全页唯一主动作，同听音页「提交」一套厚度 */
+/* ---------- 贴底动作区：一行小字 → 通栏麦克风 ----------
+   卡片外的固定底栏：白底微透、上沿一条细分割线 + 很淡的投影，近似原型那条底栏。
+   录音 / 识别的状态都靠上面那行小字说：手指压在按钮正中间，小字在手指上方，是唯一看得见的反馈。
+   z-index 低于公共悬浮胶囊（80+）和弹窗（100+），不抢它们那一层 */
+.read-aloud-actions {
+  position: fixed;
+  z-index: 30;
+  bottom: 0;
+  left: 50%;
+  width: min(100%, 430px);
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid var(--line-soft);
+  box-shadow: 0 -10px 24px rgba(71, 57, 142, 0.06);
+}
+
+/* 按住说话：全页唯一主动作，同听音页「提交」一套厚度。
+   视觉上只有麦克风一个图标，名字（按住说话 / 再读一次）靠 aria-label 给读屏（见 js）；
+   白色结果态同样不加字 */
 .read-aloud-record-button {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: 100%;
-  min-height: 66px;
+  min-height: 76px;
   padding: 0 18px;
   border: 0;
   border-radius: var(--radius-button);
@@ -304,8 +331,10 @@
   animation: readAloudWait 1s ease-in-out infinite;
 }
 
-.read-aloud-record-label {
-  overflow-wrap: anywhere;
+/* 按钮里唯一的可见内容：麦克风（录音时由 js 换成红点） */
+.read-aloud-record-icon {
+  font-size: 30px;
+  line-height: 1;
 }
 
 @keyframes readAloudWait {
@@ -313,51 +342,11 @@
   50% { opacity: 0.78; }
 }
 
-/* 假音量波形：只是 CSS 动画，不代表真的收到声音。
-   同开放问答：静止 / 结果态把这一槽收成 0 高，别让隐形占位把结果态撑松 */
-.read-aloud-wave {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 4px;
-  height: 0;
-  margin-top: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity .2s ease;
-}
-
-.read-aloud-wave.is-visible {
-  height: 30px;
-  margin-top: 10px;
-  opacity: 1;
-}
-
-.read-aloud-wave span {
-  width: 6px;
-  height: 10px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ff9aa4, #e2465a);
-}
-
-/* 波形只在录音时动：状态一结束立刻停（规范第十二节） */
-.read-aloud-wave.is-visible span {
-  animation: readAloudWave 900ms ease-in-out infinite;
-}
-
-.read-aloud-wave span:nth-child(2) { animation-delay: .12s; }
-.read-aloud-wave span:nth-child(3) { animation-delay: .24s; }
-.read-aloud-wave span:nth-child(4) { animation-delay: .36s; }
-.read-aloud-wave span:nth-child(5) { animation-delay: .48s; }
-
-@keyframes readAloudWave {
-  0%, 100% { height: 10px; }
-  50% { height: 26px; }
-}
-
-/* 一行小字：只写怎么按，不教手势 */
+/* 一行小字：状态全在这行字里（见 js）——静止「按住读完松开 · Tahan, baca, lalu lepas」、
+   录音中「正在听…… · Sedang mendengar」、识别中「听出来了？· Sebentar ya…」、
+   出结果「再读一次 · Baca lagi」。是换文案，不是藏起来 */
 .read-aloud-hint {
-  margin: 8px 0 0;
+  margin: 0 0 8px;
   color: var(--text-subtle);
   font-size: 12px;
   font-weight: 800;
@@ -365,52 +354,55 @@
   text-align: center;
 }
 
-/* 结果态：录音即交卷，这里只有绿条那句反馈；页面不再有【完成】按钮 */
+/* ---------- 回执条：卡片的下一层兄弟（只夸"开口说了"，不评价结果） ----------
+   位置：绝对定位在卡片下沿，往上压进约 13px（那一段被卡片吃掉）——不占位、不留空隙；
+   卡片 z-index 更高，滑动的全过程都被卡片下沿压着（能看到字被压掉半截）。
+   形状：扁平一张纸条——无厚度、无阴影、无描边，只有下方两个圆角。
+   出场：往下滑约 30px，滑到位就停；减弱动态效果由公共层兜底（直接出现，不滑）。 */
 .read-aloud-result {
-  margin-top: 14px;
+  position: absolute;
+  z-index: 0;
+  top: calc(100% - 13px);
+  right: 0;
+  left: 0;
+  padding: 30px 16px 16px;
+  border-radius: 0 0 18px 18px;
+  background: #d9ceff;
+  animation: readAloudReceiptIn .28s ease-out both;
 }
 
 .read-aloud-result:focus {
   outline: none;
 }
 
-@keyframes readAloudCheerIn {
-  from { opacity: 0; transform: translateY(10px); }
+@keyframes readAloudReceiptIn {
+  from { opacity: .3; transform: translateY(-30px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* 鼓励是"读得怎么样"，不跟要读的东西混在一个盒子里：
-   在结果区里做成淡紫的短条（同看图说话 / 开放问答：--select-fill 底、16 圆角、
-   无描边无厚度、内边距 11/14），中文大字 + 「·」+ 印尼小字一行居中 */
+/* 鼓励是"读得怎么样"，在回执条里居中一行：中文大字 + 「·」+ 印尼小字。
+   自己不画盒子（底色 / 圆角由回执条给），出场跟着回执条一起滑，不再单独播动画 */
 .read-aloud-cheer {
   margin: 0;
-  padding: 11px 14px;
-  border-radius: 16px;
   color: var(--ink);
-  background: var(--select-fill);
   font-size: 18px;
   font-weight: 900;
   line-height: 1.4;
-  animation: readAloudCheerIn var(--dur-enter) var(--ease-enter) both;
   text-align: center;
 }
 
 .read-aloud-cheer-dot {
   margin: 0 6px;
-  color: #bdb8d4;
+  color: #6b6390;
   font-size: 11px;
   font-style: normal;
 }
 
+/* 深紫底（#d9ceff）上浅灰会糊：印尼小字压深一档；中文深墨色不变 */
 .read-aloud-cheer-id {
-  color: var(--text-subtle);
+  color: #6b6390;
   font-size: 13px;
   font-weight: 800;
-}
-
-/* 结果态：小字提示收起（"再读一次"回到初始时自己回来） */
-.read-aloud-card.is-result .read-aloud-hint {
-  display: none;
 }
 
 /* 结果态：录音按钮原地变成整条白按钮——和「按住说话」同大小同位置，只是安静款 */
@@ -428,20 +420,35 @@
 
 @media (max-width: 360px) {
   :root {
-    --avatar-size: 40px;
+    --avatar-size: 54px;
+  }
+
+  .read-aloud-plate {
+    padding: 18px 14px 18px;
   }
 
   .read-aloud-text {
-    font-size: 36px;
+    font-size: 48px;
+  }
+
+  .read-aloud-pinyin {
+    font-size: 15px;
   }
 
   /* 两种状态的录音键一样大（结果态只是换颜色），窄屏照开放问答缩一档 */
   .read-aloud-record-button {
-    min-height: 58px;
-    font-size: 16px;
+    min-height: 68px;
   }
 
   .read-aloud-cheer {
     font-size: 17px;
+  }
+}
+
+/* 桌面预览：app-shell 有 16px 外边距和下方圆角，动作区跟着对齐，别悬在手机框外面 */
+@media (min-width: 700px) {
+  .read-aloud-actions {
+    bottom: 16px;
+    border-radius: 0 0 34px 34px;
   }
 }

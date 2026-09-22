@@ -359,6 +359,14 @@
     announce("已复位，可以重新填一次");
   }
 
+  /* 矮屏退路：动画落定后回执底边要是还在屏幕下沿外，补滚一小段让它完整露出来；
+     常见屏（≥700 高）算下来不用滚，页面不动。 */
+  function revealReceipt() {
+    if (!dom.feedback || dom.feedback.classList.contains("hidden") || typeof global.scrollBy !== "function") return;
+    const overlap = dom.feedback.getBoundingClientRect().bottom + 12 - global.innerHeight;
+    if (overlap > 0) global.scrollBy({ top: overlap, behavior: "smooth" });
+  }
+
   /* ---------- 提交 ---------- */
 
   function reportFinish(correctCount) {
@@ -419,7 +427,10 @@
     announce(allCorrect ? "全对，答对了！" : fullSentenceText());
 
     if (dom.feedback && typeof dom.feedback.scrollIntoView === "function") {
-      dom.feedback.scrollIntoView({ block: "center" });
+      /* 一屏放得下时不动页面；回执条被屏幕下沿裁掉才滚最小距离（跟其他页同一条退路） */
+      dom.feedback.scrollIntoView({ block: "nearest" });
+      /* 出场的 0.28s 还没跑完，这会儿量到的位置是收在半截的；等它落定再补看一眼 */
+      global.setTimeout(revealReceipt, 300);
     }
 
     reportFinish(results.length - misses.length);

@@ -77,7 +77,6 @@
         const mark = document.createElement("span");
         mark.className = "order-tile-mark";
         mark.setAttribute("aria-hidden", "true");
-        mark.textContent = "✓";
         button.appendChild(mark);
       }
     } else if (settings.popId === id) {

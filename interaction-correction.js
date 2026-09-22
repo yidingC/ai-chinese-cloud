@@ -2,7 +2,7 @@
    状态机：待作答 → 已选择 → 已提交 → 正确 / 错误（每题只判一次，不提供重试）。
    第一版只做「用错的词」这一种错误类型：一句话里只有一个错点，选中它才算对；
    提交后一定给出改好的整句，这是改错题的价值。
-   一页只有一个说话的人：页面上不写说明文字，题面只说给读屏听；对错靠字块的颜色表达。
+   一页只有一个说话的人：说明只留卡片里题面那一行（中文＋印尼语，写在 HTML 里）；对错靠字块的颜色表达。
    进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并调用 finish()。 */
 (function (global) {
   "use strict";
@@ -14,8 +14,6 @@
   /* 单题数据（任务书 6.4 的例子）：words 按原句顺序横排，wrong 标出唯一的错点 */
   const QUESTION = {
     id: "liangci-ben",
-    prompt: "下面这句话里有一个词用错了，点出来。",
-    promptId: "Di kalimat ini ada satu kata yang salah. Ketuk kata itu.",
     words: [
       { id: "wo", text: "我", pinyin: "wǒ" },
       { id: "mai", text: "买", pinyin: "mǎi" },
@@ -51,7 +49,6 @@
   }
 
   function cache() {
-    el.prompt = document.querySelector("[data-correction-prompt]");
     el.sentence = document.querySelector("[data-correction-sentence]");
     el.submit = document.querySelector("[data-correction-submit]");
     el.submitLabel = document.querySelector("[data-correction-submit-label]");
@@ -282,7 +279,7 @@
     lastCorrect = !!error && selectedId === error.id;
     attempts += 1;
     const tier = lastCorrect ? (attempts === 1 ? "correctFirstTry" : "correct") : "wrong";
-    const praise = typeof copy.draw === "function" ? copy.draw(tier) : null;
+    const praise = typeof copy.draw === "function" ? copy.draw(tier, { single: true }) : null;
 
     lockSentence();
     if (el.submit) {
@@ -316,7 +313,6 @@
     selectedId = "";
     startedAt = Date.now();
 
-    setText(el.prompt, QUESTION.prompt);
     renderSentence();
     resetFeedback();
     if (el.submit) {
@@ -324,7 +320,7 @@
       setText(el.submitLabel, "提交");
       setText(el.submitLabelId, "Kirim");
     }
-    announce("待作答。" + QUESTION.prompt);
+    announce("待作答。");
   }
 
   function bindEvents() {

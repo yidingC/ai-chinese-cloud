@@ -190,7 +190,7 @@
       title: "跟读模仿",
       titleId: "Tirukan bacaan",
       cardTitle: "跟读模仿",
-      cardDescription: "听一遍，然后跟着读，看看参考评分。",
+      cardDescription: "听一遍，跟着读——开口说了就算完成。",
       tags: ["语音", "占位演示"],
       ready: true,
       placeholder: true,

@@ -1397,6 +1397,9 @@
     const progress = document.querySelector("[data-memory-progress]");
     if (!grid) return;
 
+    /* 这一关我用了多久：速度榜的"我的用时"要用（跟连线配对同一套记账） */
+    const startedAt = Date.now();
+
     const pairs = [
       { key: "hello", zh: "你好", pinyin: "nǐ hǎo", id: "Halo", emoji: "👋" },
       { key: "polite", zh: "您好", pinyin: "nín hǎo", id: "Halo sopan", emoji: "🙇" },
@@ -1442,15 +1445,37 @@
 
     renderGrid();
 
+    /* 进度只报给读屏：元素视觉隐藏，页面观感不变（同连线配对） */
+    const announce = (message) => {
+      if (progress) progress.textContent = message;
+    };
+
     const updateProgress = () => {
-      if (progress) progress.textContent = `已找到 ${matchedPairs} / 4 对`;
+      announce(`已找到 ${matchedPairs} / 4 对`);
+    };
+
+    /* 翻开的牌要把内容念出来：直接取卡面里的字（汉字 + 拼音 / 印尼语），装饰用的 emoji 不念 */
+    const faceLabel = (card) => {
+      const face = card.querySelector(".memory-face.back");
+      if (!face) return "已翻开的卡片";
+      return [face.querySelector("strong"), face.querySelector("small")]
+        .filter(Boolean)
+        .map((node) => node.textContent.trim())
+        .filter(Boolean)
+        .join(" ");
     };
 
     const clearTurn = () => {
-      if (firstCard) firstCard.classList.remove("flipped");
-      if (secondCard) secondCard.classList.remove("flipped");
-      if (firstCard) firstCard.classList.remove("mismatch");
-      if (secondCard) secondCard.classList.remove("mismatch");
+      if (firstCard) {
+        firstCard.classList.remove("flipped");
+        firstCard.classList.remove("mismatch");
+        firstCard.setAttribute("aria-label", "尚未翻开的卡片");
+      }
+      if (secondCard) {
+        secondCard.classList.remove("flipped");
+        secondCard.classList.remove("mismatch");
+        secondCard.setAttribute("aria-label", "尚未翻开的卡片");
+      }
       firstCard = null;
       secondCard = null;
       resolving = false;
@@ -1461,7 +1486,7 @@
       if (!card || resolving || card.classList.contains("matched") || card.classList.contains("flipped")) return;
 
       card.classList.add("flipped");
-      card.setAttribute("aria-label", "已翻开的卡片");
+      card.setAttribute("aria-label", faceLabel(card));
 
       if (!firstCard) {
         firstCard = card;
@@ -1475,12 +1500,22 @@
         secondCard.classList.add("matched");
         firstCard.disabled = true;
         secondCard.disabled = true;
+        firstCard.setAttribute("aria-label", `${faceLabel(firstCard)}，已配对`);
+        secondCard.setAttribute("aria-label", `${faceLabel(secondCard)}，已配对`);
         firstCard = null;
         secondCard = null;
         matchedPairs += 1;
         updateProgress();
 
         if (matchedPairs === pairs.length) {
+          /* 记在第几关：课堂页的链接带 ?slot=N；翻牌还没排进课表，
+             单独打开（URL 没带 slot）时一律不记账、不标关卡，免得课堂页假显示"这关做完了" */
+          const slot = slotFromUrl(0);
+          if (slot > 0) {
+            recordOwnTime(slot, "memory", startedAt);
+            markSlotDone(slot);
+            recordPlatformCompletion(slot);
+          }
           window.setTimeout(openCompleteModal, 520);
         }
         return;
@@ -1490,7 +1525,12 @@
       firstCard.classList.add("mismatch");
       secondCard.classList.add("mismatch");
       madeMistake = true;
-      window.setTimeout(clearTurn, 850);
+      announce("不配对，再试一次");
+      window.setTimeout(() => {
+        clearTurn();
+        /* 播报区回到进度：进度不过期，下次同样的错配提示也还能再念一遍 */
+        updateProgress();
+      }, 850);
     });
 
     const restartRound = () => {

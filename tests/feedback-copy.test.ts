@@ -3,6 +3,8 @@ import "../shared/feedback-copy.js";
 
 const copy = (window as any).AICloudFeedbackCopy;
 const POOLS = ["correct", "correctFirstTry", "wrong", "pair"];
+const SINGLE_POOL = "correctFirstTrySingle";
+const ALL_POOLS = POOLS.concat([SINGLE_POOL]);
 
 describe("feedback copy", () => {
   it("keeps fixed bilingual lines for rare moments", () => {
@@ -15,7 +17,7 @@ describe("feedback copy", () => {
   });
 
   it("rotates praise pools with short bilingual entries", () => {
-    POOLS.forEach((key) => {
+    ALL_POOLS.forEach((key) => {
       expect(Array.isArray(copy[key])).toBe(true);
       expect(copy[key].length).toBeGreaterThanOrEqual(2);
       copy[key].forEach((entry: any) => {
@@ -30,7 +32,7 @@ describe("feedback copy", () => {
   });
 
   it("never draws the same sentence twice in a row", () => {
-    POOLS.forEach((key) => {
+    ALL_POOLS.forEach((key) => {
       const seen = new Set<string>();
       let previous = "";
       for (let i = 0; i < 40; i += 1) {
@@ -67,7 +69,7 @@ describe("feedback copy", () => {
   });
 
   it("ships one emoji per pool entry", () => {
-    POOLS.forEach((key) => {
+    ALL_POOLS.forEach((key) => {
       copy[key].forEach((entry: any) => {
         expect(typeof entry.emoji).toBe("string");
         expect(entry.emoji.length).toBeGreaterThan(0);
@@ -75,5 +77,33 @@ describe("feedback copy", () => {
     });
     const drawn = copy.draw("correct");
     expect(drawn.emoji).toBeTruthy();
+  });
+
+  it("keeps first-try praise single-question-safe when asked for it", () => {
+    const multi = copy.correctFirstTry.map((entry: any) => entry.zh);
+    const single = copy.correctFirstTrySingle.map((entry: any) => entry.zh);
+    const multiOnly = /[全都处]/;
+
+    expect(single.length).toBeGreaterThanOrEqual(3);
+    expect(single.some((zh: string) => multi.includes(zh))).toBe(false);
+    single.forEach((zh: string) => expect(multiOnly.test(zh)).toBe(false));
+
+    const seen = new Set<string>();
+    for (let i = 0; i < 500; i += 1) {
+      const praise = copy.draw("correctFirstTry", { single: true });
+      expect(single).toContain(praise.zh);
+      expect(multiOnly.test(praise.zh)).toBe(false);
+      seen.add(praise.zh);
+    }
+    expect(seen.size).toBe(single.length);
+
+    const multiSeen = new Set<string>();
+    for (let i = 0; i < 300; i += 1) {
+      const praise = copy.draw("correctFirstTry");
+      expect(multi).toContain(praise.zh);
+      multiSeen.add(praise.zh);
+    }
+    expect(multiSeen.size).toBeGreaterThan(1);
+    expect(copy.correctFirstTry.some((entry: any) => /[全都处]/.test(entry.zh))).toBe(true);
   });
 });

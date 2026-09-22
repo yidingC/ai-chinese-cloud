@@ -66,9 +66,9 @@
   cursor: default;
 }
 
-/* 词卡：主字 15/900、拼音 10/900 中性灰（词 + 拼音两行的排法） */
+/* 词卡：主字 22/900、拼音 11/900 中性灰（词 + 拼音两行的排法；第十节「可点字块里的汉字 ≥20px（基准 22px）」） */
 .match-board .match-item strong {
-  font-size: 15px;
+  font-size: 22px;
   font-weight: 900;
   line-height: 1.2;
 }
@@ -76,7 +76,7 @@
 .match-board .match-item span {
   margin-top: 2px;
   color: var(--pm-text-subtle);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
 }
 
@@ -123,19 +123,14 @@
 }
 
 .match-board .match-item.correct::after {
-  content: "✓";
   position: absolute;
   top: -8px;
   right: -8px;
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
+  width: 22px;
+  height: 22px;
+  content: "";
   border-radius: 50%;
-  color: #ffffff;
-  background: var(--pm-correct);
-  font-size: 15px;
-  font-weight: 900;
+  background: var(--pm-correct) var(--check-pen) center / 18px 18px no-repeat;
   box-shadow: none;
   animation: pmCheckPop var(--pm-dur-pop) var(--pm-ease-pop);
 }
