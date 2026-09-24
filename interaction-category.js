@@ -9,21 +9,27 @@
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
-  /* 单题数据（题型体验用的模拟题目）：2 个类别 + 6 个待归类的词 */
-  const GROUPS = [
-    { id: "eat", name: "吃", nameId: "makan" },
-    { id: "drink", name: "喝", nameId: "minum" }
-  ];
+  /* 本页自带的示范题（题型体验用）：2 个类别 + 6 个待归类的词；
+     meaningId = 词的印尼语意思，跟在拼音后面显示，进类别框也跟着走。
+     字段结构与 round-content.js 里同题型的题目一致 */
+  const DEMO_QUESTION = {
+    id: "category-food",
+    groups: [
+      { id: "eat", name: "吃", nameId: "makan" },
+      { id: "drink", name: "喝", nameId: "minum" }
+    ],
+    words: [
+      { id: "rice", text: "米饭", pinyin: "mǐfàn", meaningId: "nasi", group: "eat" },
+      { id: "water", text: "水", pinyin: "shuǐ", meaningId: "air", group: "drink" },
+      { id: "bread", text: "面包", pinyin: "miànbāo", meaningId: "roti", group: "eat" },
+      { id: "tea", text: "茶", pinyin: "chá", meaningId: "teh", group: "drink" },
+      { id: "dumpling", text: "饺子", pinyin: "jiǎozi", meaningId: "jiaozi", group: "eat" },
+      { id: "juice", text: "果汁", pinyin: "guǒzhī", meaningId: "jus", group: "drink" }
+    ]
+  };
 
-  /* meaningId = 词的印尼语意思，跟在拼音后面显示，进类别框也跟着走 */
-  const WORDS = [
-    { id: "rice", text: "米饭", pinyin: "mǐfàn", meaningId: "nasi", group: "eat" },
-    { id: "water", text: "水", pinyin: "shuǐ", meaningId: "air", group: "drink" },
-    { id: "bread", text: "面包", pinyin: "miànbāo", meaningId: "roti", group: "eat" },
-    { id: "tea", text: "茶", pinyin: "chá", meaningId: "teh", group: "drink" },
-    { id: "dumpling", text: "饺子", pinyin: "jiǎozi", meaningId: "jiaozi", group: "eat" },
-    { id: "juice", text: "果汁", pinyin: "guǒzhī", meaningId: "jus", group: "drink" }
-  ];
+  /* 当前这道题（轮内来自 round-content.js，否则是上面那份示范题） */
+  let QUESTION = DEMO_QUESTION;
 
   const el = {};
   let placed = {};        // 词 id → 类别 id（提交后只剩放对的词）
@@ -39,6 +45,10 @@
   let nudgeTimer = 0;
   let focusRequest = null;
 
+  /* 跨页混题型一轮（链接带 q / total）：进度 / 下一题 / 记账与轮末弹窗交给 shared/round-flow.js */
+  const roundFlow = global.AICloudRoundFlow || null;
+  let roundState = { active: false };
+
   function setText(node, text) {
     if (node) node.textContent = text;
   }
@@ -48,11 +58,11 @@
   }
 
   function wordById(id) {
-    return WORDS.filter(function (word) { return word.id === id; })[0] || null;
+    return QUESTION.words.filter(function (word) { return word.id === id; })[0] || null;
   }
 
   function groupById(id) {
-    return GROUPS.filter(function (group) { return group.id === id; })[0] || null;
+    return QUESTION.groups.filter(function (group) { return group.id === id; })[0] || null;
   }
 
   function groupName(id) {
@@ -66,15 +76,15 @@
   }
 
   function placedList(groupId) {
-    return WORDS.filter(function (word) { return placed[word.id] === groupId; });
+    return QUESTION.words.filter(function (word) { return placed[word.id] === groupId; });
   }
 
   function placedTotal() {
-    return WORDS.filter(function (word) { return placed[word.id] !== undefined; }).length;
+    return QUESTION.words.filter(function (word) { return placed[word.id] !== undefined; }).length;
   }
 
   function allPlaced() {
-    return WORDS.every(function (word) { return placed[word.id] !== undefined; });
+    return QUESTION.words.every(function (word) { return placed[word.id] !== undefined; });
   }
 
   function cache() {
@@ -193,7 +203,7 @@
   function renderPool() {
     if (!el.pool) return;
     el.pool.textContent = "";
-    const rest = WORDS.filter(function (word) { return placed[word.id] === undefined; });
+    const rest = QUESTION.words.filter(function (word) { return placed[word.id] === undefined; });
     rest.forEach(function (word) {
       el.pool.appendChild(buildPoolItem(word));
     });
@@ -240,7 +250,7 @@
   function renderGroups() {
     if (!el.groups) return;
     el.groups.textContent = "";
-    GROUPS.forEach(function (group) {
+    QUESTION.groups.forEach(function (group) {
       el.groups.appendChild(buildGroup(group));
     });
   }
@@ -273,7 +283,7 @@
   }
 
   function placeSummary() {
-    return "已归类 " + placedTotal() + " / " + WORDS.length + "。";
+    return "已归类 " + placedTotal() + " / " + QUESTION.words.length + "。";
   }
 
   function nudgePool() {
@@ -391,7 +401,7 @@
 
     wrongInfo = {};
     const wrong = [];
-    WORDS.forEach(function (word) {
+    QUESTION.words.forEach(function (word) {
       if (placed[word.id] !== word.group) {
         wrongInfo[word.id] = word.group;
         wrong.push(word);
@@ -406,8 +416,18 @@
     render();
     showFeedback();
     announce(lastCorrect
-      ? "答对了！" + WORDS.length + " 个词全部分类正确。"
+      ? "答对了！" + QUESTION.words.length + " 个词全部分类正确。"
       : "再想想。" + wrong.length + " 个词放错了，已经放回上面的待归类区。");
+
+    /* 跨页那一轮：本页不记账、不弹窗——中间题只是「下一题」，最后一题交给 round-flow 结算 */
+    if (roundState.active && roundFlow) {
+      const step = roundFlow.afterAnswer(lastCorrect);
+      const hasNext = step !== "finish";
+      if (el.submit) el.submit.disabled = !hasNext;
+      if (el.submitLabel) setText(el.submitLabel, hasNext ? "下一题" : "已提交");
+      if (el.submitLabelId) setText(el.submitLabelId, hasNext ? "Lanjut" : "Terkirim");
+      return;
+    }
 
     completeOnce(); /* 课堂模式记进度；完成弹窗两种模式都走，跳转由弹窗按钮负责 */
     modalTimer = global.setTimeout(function () {
@@ -416,7 +436,14 @@
   }
 
   function bindEvents() {
-    if (el.submit) el.submit.addEventListener("click", submit);
+    if (el.submit) el.submit.addEventListener("click", function () {
+      /* 跨页那一轮：答完后这颗按钮是【下一题】，点它跳下一题那一页 */
+      if (submitted && roundState.active && roundFlow) {
+        roundFlow.goNext();
+        return;
+      }
+      submit();
+    });
     if (el.reset) el.reset.addEventListener("click", resetAll);
 
     if (el.pool) {
@@ -455,13 +482,18 @@
     startedAt = Date.now();
     resetFeedback();
     render();
-    announce("题目已开始：把 " + WORDS.length + " 个词放进对应的类别里。");
+    announce("题目已开始：把 " + QUESTION.words.length + " 个词放进对应的类别里。");
   }
 
   function boot() {
     cache();
     applyShellText();
     bindEvents();
+
+    /* 轮内（跨页那一轮）→ 题目从 round-content.js 取；不是轮内 → 本页自带的那道示范题 */
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("category") : { active: false };
+    QUESTION = roundState.active && roundState.question ? roundState.question : DEMO_QUESTION;
+
     startQuestion();
   }
 

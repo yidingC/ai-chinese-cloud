@@ -6,7 +6,10 @@
    读屏播「答对了 / 再想想 + 刚才听到的是：三，sān，tiga」。
    播放是假的：不发出声音、不碰麦克风；题目数据里的 audio 一旦填上真实路径，
    同一个播放按钮就走 <audio> 真播放，页面代码不用重写。
-   进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并调用 finish()。 */
+   进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并调用 finish()。
+
+   跨页混题型一轮（第 3 轮那种，链接带 q / total）：题目从 round-content.js 取，
+   进度行 / 跳下一题 / 记账与完成弹窗都交给 shared/round-flow.js；不是轮内时一切照旧。 */
 (function (global) {
   "use strict";
 
@@ -19,7 +22,7 @@
   /* 单题数据（任务书 5.4 的例子）。prompt 只给读屏：页面上让大按钮自己说话。
      audio 先留空字符串：以后录音文件放进 public/shared/demo-materials/，
      把路径填到这个字段里，播放就是真的了——页面代码不用改。 */
-  const QUESTION = {
+  const DEMO_QUESTION = {
     id: "ting-shengdiao-san",
     prompt: "听一听，选出你听到的",
     audio: "",
@@ -33,6 +36,13 @@
       { text: "伞", pinyin: "sǎn" }
     ]
   };
+
+  /* 本页当前这一道题：轮内（跨页那一轮）从 round-content.js 取，否则用上面那份示范题 */
+  let question = DEMO_QUESTION;
+
+  /* 跨页混题型一轮（第 3 轮）：本页只是其中一道题，进度 / 下一题 / 记账交给 round-flow */
+  const roundFlow = global.AICloudRoundFlow || null;
+  let roundState = { active: false };
 
   const el = {};
   let options = [];        // [{ id, letter, text, pinyin, correct }]，按数据顺序
@@ -97,7 +107,7 @@
   }
 
   function hasRealAudio() {
-    return typeof QUESTION.audio === "string" && QUESTION.audio.trim() !== "";
+    return typeof question.audio === "string" && question.audio.trim() !== "";
   }
 
   /* 呼吸只在"待作答 / 待再听"时出现：播放中换成图标脉冲，提交后彻底停住 */
@@ -180,10 +190,18 @@
   function correctAnswerParts() {
     const correct = correctOptionOf();
     return {
-      text: correct ? correct.text : QUESTION.audioText || "",
+      text: correct ? correct.text : question.audioText || "",
       pinyin: (correct && correct.pinyin) || "",
-      meaning: QUESTION.meaningId || ""
+      meaning: question.meaningId || ""
     };
+  }
+
+  /* 按钮文案三态里的后两态：轮内答完中间题＝紫【下一题】，最后一题＝灰【已提交】 */
+  function paintSubmit(zh, id, disabled) {
+    if (!el.submit) return;
+    el.submit.disabled = disabled;
+    setText(el.submitLabel, zh);
+    setText(el.submitLabelId, id);
   }
 
   function showReceipt() {
@@ -322,6 +340,14 @@
     const spoken = [answer.text, answer.pinyin, answer.meaning].filter(Boolean).join("，");
     announce((lastCorrect ? "答对了。" : "再想想。") + "刚才听到的是：" + spoken + "。");
 
+    /* 跨页那一轮：本页不记账、不弹窗——中间题只是"下一题"，最后一题交给 round-flow 结算 */
+    if (roundState.active && roundFlow) {
+      const step = roundFlow.afterAnswer(lastCorrect);
+      if (step === "finish") paintSubmit("已提交", "Terkirim", true);
+      else paintSubmit("下一题", "Lanjut", false);
+      return;
+    }
+
     completeOnce();
     modalTimer = global.setTimeout(function () {
       openModal(tier, praise);
@@ -339,15 +365,15 @@
     selectedId = "";
     startedAt = Date.now();
 
-    setText(el.prompt, QUESTION.prompt);
+    setText(el.prompt, question.prompt || "听一听，选出你听到的");
     resetPlay();
     setHidden(el.receipt, true);
     if (el.audio) {
-      if (hasRealAudio()) el.audio.setAttribute("src", QUESTION.audio);
+      if (hasRealAudio()) el.audio.setAttribute("src", question.audio);
       else el.audio.removeAttribute("src");
     }
 
-    options = QUESTION.options.map(function (option, index) {
+    options = question.options.map(function (option, index) {
       return {
         id: "listening-" + index,
         letter: LETTERS[index] || "?",
@@ -368,7 +394,14 @@
 
   function bindEvents() {
     if (el.play) el.play.addEventListener("click", handlePlay);
-    if (el.submit) el.submit.addEventListener("click", submitAnswer);
+    if (el.submit) el.submit.addEventListener("click", function () {
+      /* 跨页那一轮：答完后这颗按钮是【下一题】，点它跳下一题那一页 */
+      if (submitted && roundState.active && roundFlow) {
+        roundFlow.goNext();
+        return;
+      }
+      submitAnswer();
+    });
     if (el.audio) {
       /* 真音频播完 / 播不动时，按钮状态照常回来 */
       el.audio.addEventListener("ended", function () {
@@ -384,6 +417,11 @@
   function boot() {
     cache();
     applyShellText();
+
+    /* 轮内（跨页那一轮）→ 题目从 round-content.js 取；不是轮内 → 本页自带的那道示范题 */
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("listening") : { active: false };
+    question = roundState.active ? roundState.question : DEMO_QUESTION;
+
     bindEvents();
     startQuestion();
   }

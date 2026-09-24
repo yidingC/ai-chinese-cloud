@@ -8,7 +8,8 @@
    学习卡是卡片的下一层，出结果时从卡片下沿滑出来（同跟读模仿页的回执条）。
    图槽、参考答案都按可替换字段写：图片路径一填、识别接上，页面代码不用重写。
    出结果就交卷：两种模式都在约 2 秒后弹 shared/feedback-modal.js 的公共弹窗，
-   课堂模式下由弹窗按钮跳回课堂（进度记账在 shared/activity-bridge.js）。 */
+   课堂模式下由弹窗按钮跳回课堂（进度记账在 shared/activity-bridge.js）。
+   跨页多题一轮（链接带 q / total）：进度行 / 下一题 / 记账与轮末弹窗交给 shared/round-flow.js。 */
 (function (global) {
   "use strict";
 
@@ -27,10 +28,11 @@
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
-  /* 单题数据（任务书 7.4 的例子）。prompt 只给读屏，页面上让大图自己说话。
+  /* 兜底的示范题（任务书 7.4 的例子）。prompt 只给读屏，页面上让大图自己说话。
      image 先留空字符串：以后把真图放进 public/shared/demo-materials/，
-     把路径填到这个字段里，图槽就渲染 <img>——页面代码不用改。 */
-  const QUESTION = {
+     把路径填到这个字段里，图槽就渲染 <img>——页面代码不用改。
+     轮内时这道题从 round-content.js 取——改题目请改那个文件，这里只是"数据读不到也不白屏"的兜底 */
+  const DEMO_QUESTION = {
     id: "kan-tu-paobu",
     prompt: "看这张图，用中文说一句话。",
     hint: "试试说：谁 + 在做什么 · Coba: siapa + sedang apa",
@@ -41,6 +43,9 @@
     answerId: "Anak itu sedang berlari."
   };
 
+  /* 当前这一题：非轮内 = 上面那份兜底；轮内 = round-content.js 里 slot 对应的这道题 */
+  let QUESTION = DEMO_QUESTION;
+
   const el = {};
   let micState = "idle";       // idle（待作答）| recording（录音中）| recognizing（识别中）| done（已说完）
   let finished = false;
@@ -50,6 +55,11 @@
   let pressedWhileRecording = false;
   let recognizeTimer = 0;
   let modalTimer = 0;                  // 演示模式的自动弹窗计时器：重录要取消它
+
+  /* 跨页多题一轮：进度行 / 下一题 / 记账都交给 shared/round-flow.js；不是轮内就照旧 */
+  let roundFlow = null;
+  let roundState = { active: false };
+  let roundAnswered = false;           // 轮内这一题只收尾一次（挡住重录重入）
 
   function setText(node, text) {
     if (node) node.textContent = text;
@@ -73,6 +83,10 @@
     el.cheer = document.querySelector("[data-picture-talk-cheer]");
     el.cheerId = document.querySelector("[data-picture-talk-cheer-id]");
     el.announcer = document.querySelector("[data-picture-talk-announcer]");
+    el.nextBox = document.querySelector("[data-pt-next]");
+    el.nextButton = document.querySelector("[data-pt-next-btn]");
+    el.nextLabel = document.querySelector("[data-pt-next-label]");
+    el.nextLabelId = document.querySelector("[data-pt-next-label-id]");
   }
 
   function activityBridge() {
@@ -205,8 +219,36 @@
     });
   }
 
-  /* 录音即交卷：课堂模式由公共脚本记进度；两种模式都弹弹窗，跳转由弹窗按钮负责 */
+  /* 轮内：麦克风停用（变灰、点不动）；重练留给轮末弹窗的「再做一次」 */
+  function stopRetryInRound() {
+    if (el.mic) el.mic.disabled = true;
+  }
+
+  /* 轮内：中间题解禁【下一题】，最后一题换成【已提交】（口径与其它题型页一致） */
+  function stepToNext(step) {
+    if (step === "next" && el.nextButton) {
+      el.nextButton.disabled = false;
+    } else if (step === "finish") {
+      setText(el.nextLabel, "已提交");
+      setText(el.nextLabelId, "Terkirim");
+    }
+    /* 矮屏上这颗键可能正好压在贴底动作区后面：把它带进视野，别让学生自己找 */
+    if (el.nextBox && typeof el.nextBox.scrollIntoView === "function") {
+      el.nextBox.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  /* 录音即交卷。轮内：不记账、不弹本页弹窗——这一题只收尾一次，把【下一题】交给 round-flow；
+     题型体验：课堂模式由公共脚本记进度；两种模式都弹弹窗，跳转由弹窗按钮负责 */
   function submitResult() {
+    if (roundFlow && roundState.active) {
+      if (roundAnswered) return;
+      roundAnswered = true;
+      finished = true;
+      stopRetryInRound();
+      stepToNext(roundFlow.afterAnswer(true));
+      return;
+    }
     completeOnce();
     scheduleModal();
   }
@@ -252,7 +294,11 @@
   function handleMicDown(event) {
     if (typeof event.button === "number" && event.button !== 0) return;
     /* 结果态：这一下是「再说一次」——按下去才重录，不自动开录 */
-    if (micState === "done") { restartQuestion(); return; }
+    if (micState === "done") {
+      if (roundState.active) return;   /* 轮内：说完这一题就到头了，重录留给轮末「再做一次」 */
+      restartQuestion();
+      return;
+    }
     if (micState !== "idle" && micState !== "recording") return;
     pressedWhileRecording = micState === "recording";
     pressStartedAt = Date.now();
@@ -272,7 +318,11 @@
        浏览器不支持 PointerEvent 时（老 Safari），click 就是唯一入口 */
     const fromKeyboard = !event || event.detail === 0;
     if (!fromKeyboard && typeof global.PointerEvent === "function") return;
-    if (micState === "done") { restartQuestion(); return; }
+    if (micState === "done") {
+      if (roundState.active) return;   /* 轮内：同上，重录不再触发 */
+      restartQuestion();
+      return;
+    }
     if (micState === "idle") startRecording();
     else if (micState === "recording") stopRecording();
   }
@@ -316,6 +366,15 @@
     cache();
     applyShellText();
     bindEvents();
+    /* 轮内多题：题目从 round-content.js 取，不是轮内就用本页自带的兜底题；
+       进度行 / 下一题 / 记账都交给 shared/round-flow.js */
+    roundFlow = global.AICloudRoundFlow || null;
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("picture-talk") : { active: false };
+    QUESTION = roundState.active && roundState.question ? roundState.question : DEMO_QUESTION;
+    if (roundState.active && el.nextBox) el.nextBox.classList.remove("hidden");
+    if (roundState.active && el.nextButton) {
+      el.nextButton.addEventListener("click", function () { roundFlow.goNext(); });
+    }
     startQuestion();
   }
 

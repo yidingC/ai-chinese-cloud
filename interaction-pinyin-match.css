@@ -381,3 +381,17 @@
     font-size: 16px;
   }
 }
+
+/* ---------- 轮内多题：卡下面的【下一题】——常驻，不做入场动画 ---------- */
+.py-next {
+  margin: 18px 0 0;
+}
+
+/* 没配完＝灰、不带紫（口径与其它题型页的禁用键一致） */
+.py-next .primary-button[disabled] {
+  opacity: 1;
+  color: #a5a0bd;
+  background: #eceaf4;
+  box-shadow: 0 3px 0 #e2dfee;
+  cursor: not-allowed;
+}

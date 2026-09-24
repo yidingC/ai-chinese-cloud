@@ -54,8 +54,14 @@
     return (meta && meta.page) || `interaction-${type}.html`;
   };
 
-  /* 关卡链接：自动拼上题型、课堂模式和第几关（1、2、3…），这样做完才记得上账 */
-  const levelHref = (type, slot) => `${cardPage(type)}?type=${encodeURIComponent(type)}&mode=class&slot=${slot}`;
+  /* 关卡链接：自动拼上题型、课堂模式和第几关（1、2、3…），这样做完才记得上账。
+     跨页混题型一轮（数据里写了 questionCount）：再带上 q=1&total=N，
+     由 shared/round-flow.js 拿着这两个参数把四道题串成一整轮 */
+  const levelHref = (type, slot, questionCount) => {
+    const base = `${cardPage(type)}?type=${encodeURIComponent(type)}&mode=class&slot=${slot}`;
+    const count = Number(questionCount) || 0;
+    return count > 0 ? `${base}&q=1&total=${count}` : base;
+  };
 
   /* 课程数据校验：缺字段、没有关卡、格式不对 → 整份退回兜底数据 */
   function normalizeCourse(raw) {
@@ -70,7 +76,9 @@
           tone: COURSE_TONES.indexOf(level.tone) >= 0 ? level.tone : COURSE_TONES[index % COURSE_TONES.length],
           /* 这两行是"这一轮练什么"（轮次主题，老师/教研填）：空着就空着，绝不退回题型名 */
           title: typeof level.title === "string" ? level.title.trim() : "",
-          subtitle: typeof level.subtitle === "string" ? level.subtitle.trim() : ""
+          subtitle: typeof level.subtitle === "string" ? level.subtitle.trim() : "",
+          /* questionCount：这一轮一共几道题（跨页混题型一轮 >1；不写＝这一页就是这道题） */
+          questionCount: Number(level.questionCount) > 0 ? Math.round(Number(level.questionCount)) : 0
         };
       });
     if (!levels.length) return DEFAULT_COURSE;
@@ -585,7 +593,7 @@
         node,
         index,
         type: level.type || "",
-        href: level.type ? levelHref(level.type, index) : "",
+        href: level.type ? levelHref(level.type, index, level.questionCount) : "",
         row: node.closest(".cls-level-row"),
         board: node.closest(".cls-level-row") ? node.closest(".cls-level-row").querySelector(".cls-level-board") : null,
         badge: node.querySelector("[data-badge]"),
@@ -1196,6 +1204,20 @@
     const progress = document.querySelector("[data-match-progress]");
     if (!board || !svg) return;
 
+    /* 轮内（跨页混题型一轮的连线那一道）：进度行由 round-flow 画；
+       连完 4 对不记账、不弹窗，只解禁板子下面那颗常驻的【下一题 / Lanjut】 */
+    const roundFlow = window.AICloudRoundFlow || null;
+    const roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("match") : { active: false };
+    const nextBox = document.querySelector("[data-match-next]");
+    const nextButton = document.querySelector("[data-match-next-btn]");
+    const nextLabel = document.querySelector("[data-match-next-label]");
+    const nextLabelId = document.querySelector("[data-match-next-label-id]");
+    /* 轮内：进场就把这颗按钮摆出来（灰、点不动），连完 4 对才解禁 */
+    if (roundFlow && roundState.active && nextBox) nextBox.classList.remove("hidden");
+    if (roundFlow && roundState.active && nextButton) {
+      nextButton.addEventListener("click", () => roundFlow.goNext());
+    }
+
     /* 这一关我用了多久：速度榜的"我的用时"要用 */
     const startedAt = Date.now();
     const matched = new Set();
@@ -1281,6 +1303,18 @@
           redraw();
 
           if (matched.size === leftItems.length) {
+            /* 轮内：不记账、不弹窗，只处理这颗按钮（点它跳下一题那一页） */
+            if (roundFlow && roundState.active) {
+              const step = roundFlow.afterAnswer(!madeMistake);
+              if (step === "next") {
+                if (nextButton) nextButton.disabled = false;
+              } else if (step === "finish") {
+                /* 本页就是这一轮最后一题：按钮留灰，文案换【已提交 / Terkirim】 */
+                if (nextLabel) nextLabel.textContent = "已提交";
+                if (nextLabelId) nextLabelId.textContent = "Terkirim";
+              }
+              return;
+            }
             /* 记在第几关：课堂页的链接带 ?slot=N；单独打开这页时仍按第 3 关算 */
             const slot = slotFromUrl(3);
             recordOwnTime(slot, "match", startedAt);
@@ -1376,6 +1410,18 @@
     const grid = document.querySelector("[data-memory-grid]");
     const progress = document.querySelector("[data-memory-progress]");
     if (!grid) return;
+
+    /* 轮内多题：进度行 / 下一题 / 记账都交给 shared/round-flow.js；不是轮内就照旧 */
+    const roundFlow = window.AICloudRoundFlow || null;
+    const roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("memory") : { active: false };
+    const nextBox = document.querySelector("[data-memory-next]");
+    const nextButton = document.querySelector("[data-memory-next-btn]");
+    const nextLabel = document.querySelector("[data-memory-next-label]");
+    const nextLabelId = document.querySelector("[data-memory-next-label-id]");
+    if (roundFlow && roundState.active && nextBox) nextBox.classList.remove("hidden");
+    if (roundFlow && roundState.active && nextButton) {
+      nextButton.addEventListener("click", () => roundFlow.goNext());
+    }
 
     /* 这一关我用了多久：速度榜的"我的用时"要用（跟连线配对同一套记账） */
     const startedAt = Date.now();
@@ -1488,8 +1534,21 @@
         updateProgress();
 
         if (matchedPairs === pairs.length) {
-          /* 记在第几关：课堂页的链接带 ?slot=N；翻牌还没排进课表，
-             单独打开（URL 没带 slot）时一律不记账、不标关卡，免得课堂页假显示"这关做完了" */
+          /* 轮内：不记账、不弹窗（结算由最后一题那页的 round-flow 做），只处理这颗按钮 */
+          if (roundFlow && roundState.active) {
+            const step = roundFlow.afterAnswer(!madeMistake);
+            if (step === "next") {
+              if (nextButton) nextButton.disabled = false;
+            } else if (step === "finish") {
+              /* 本页就是这一轮最后一题：按钮留灰，文案换【已提交 / Terkirim】 */
+              if (nextLabel) nextLabel.textContent = "已提交";
+              if (nextLabelId) nextLabelId.textContent = "Terkirim";
+            }
+            return;
+          }
+          /* 老行为（题型体验 / 单独打开）：照旧记账 + 弹窗。
+             记在第几关：课堂页的链接带 ?slot=N；翻牌还没排进课表，
+             没带 slot 时一律不记账、不标关卡，免得课堂页假显示"这关做完了" */
           const slot = slotFromUrl(0);
           if (slot > 0) {
             recordOwnTime(slot, "memory", startedAt);

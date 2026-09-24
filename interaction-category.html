@@ -28,6 +28,12 @@
       <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
       <div class="category-stage">
         <section class="category-card" aria-labelledby="category-prompt">
+          <!-- 轮内多题（跨页那一轮）：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+          <div class="round-progress hidden" data-round-progress>
+            <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+            <p class="round-progress-text" data-round-text></p>
+          </div>
+
           <div class="category-prompt-block">
             <h3 class="category-prompt" id="category-prompt"><span aria-hidden="true">🐼</span>把下面的词放进对应的类别里吧！</h3>
             <p class="category-prompt-id" lang="id">Ayo, kelompokkan kata-kata di bawah ini ke kategori yang tepat!</p>
@@ -72,6 +78,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-category.js"></script>
 </body>
 </html>

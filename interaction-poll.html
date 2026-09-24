@@ -27,12 +27,20 @@
     <main class="page page-content poll-page">
       <div class="game-intro">
         <div>
-          <h2 id="poll-question">下课后你最喜欢做什么？</h2>
-          <p>Setelah kelas, kamu paling suka melakukan apa?</p>
+          <!-- 题干由 JS 按题目数据填（轮内来自 round-content.js）；这里写的一份是 JS 没跑起来时的兜底 -->
+          <h2 id="poll-question" data-poll-question>下课后你最喜欢做什么？</h2>
+          <p data-poll-question-id>Setelah kelas, kamu paling suka melakukan apa?</p>
         </div>
       </div>
 
       <section class="poll-card" data-poll-card data-activity-slot aria-labelledby="poll-question">
+        <!-- 轮内多题（跨页那一轮）：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+        <div class="round-progress hidden" data-round-progress>
+          <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+          <p class="round-progress-text" data-round-text></p>
+        </div>
+
+        <!-- 插图暂不随题（等后台出图）：这张 SVG 先留在 HTML 里，不放进题目数据 -->
         <figure class="poll-figure" data-poll-figure>
           <svg viewBox="0 0 320 128" role="img" aria-label="下课以后：听音乐、打篮球、看中文动画、和朋友聊天">
             <defs>
@@ -66,6 +74,7 @@
           </svg>
         </figure>
 
+        <!-- 选项由 JS 按题目数据渲染（结构就是下面这样）；这一份是 JS 没跑起来时的兜底 -->
         <div class="poll-options" role="radiogroup" aria-labelledby="poll-question">
           <label class="poll-option" data-poll-option>
             <input class="poll-option-input" type="radio" name="poll-choice" value="music">
@@ -119,6 +128,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-poll.js"></script>
 </body>
 </html>

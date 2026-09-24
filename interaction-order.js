@@ -1,22 +1,32 @@
 (function (global) {
   "use strict";
 
-  const ITEMS = [
-    { id: "apple", text: "苹果", pinyin: "píng guǒ" },
-    { id: "me", text: "我", pinyin: "wǒ" },
-    { id: "one", text: "一个", pinyin: "yí ge" },
-    { id: "want", text: "想", pinyin: "xiǎng" },
-    { id: "buy", text: "买", pinyin: "mǎi" }
-  ];
-
-  const BANK_ORDER = ["apple", "me", "one", "want", "buy"];
-  const CORRECT_ORDER = ["me", "want", "buy", "one", "apple"];
-  const CORRECT_ID = "Saya ingin membeli sebuah apel.";
+  /* 本页自带的示范题（题型体验用）：字段结构与 round-content.js 里同题型的题目一致 */
+  const DEMO_QUESTION = {
+    id: "order-apple",
+    items: [
+      { id: "apple", text: "苹果", pinyin: "píng guǒ" },
+      { id: "me", text: "我", pinyin: "wǒ" },
+      { id: "one", text: "一个", pinyin: "yí ge" },
+      { id: "want", text: "想", pinyin: "xiǎng" },
+      { id: "buy", text: "买", pinyin: "mǎi" }
+    ],
+    bankOrder: ["apple", "me", "one", "want", "buy"],
+    correctOrder: ["me", "want", "buy", "one", "apple"],
+    correctId: "Saya ingin membeli sebuah apel."
+  };
   const MODAL_DELAY = 1400;
+
+  /* 当前这道题（轮内来自 round-content.js，否则是上面那份示范题） */
+  let QUESTION = DEMO_QUESTION;
 
   const bridge = global.AICloudActivity;
   const copy = global.AICloudFeedbackCopy || {};
   const startedAt = Date.now();
+
+  /* 跨页混题型一轮（链接带 q / total）：进度 / 下一题 / 记账与轮末弹窗交给 shared/round-flow.js */
+  const roundFlow = global.AICloudRoundFlow || null;
+  let roundState = { active: false };
 
   const answerNode = document.querySelector("[data-order-answer]");
   const bankNode = document.querySelector("[data-order-bank]");
@@ -33,7 +43,7 @@
   let attempts = 0;
 
   function itemFor(id) {
-    return ITEMS.filter(function (entry) { return entry.id === id; })[0] || null;
+    return QUESTION.items.filter(function (entry) { return entry.id === id; })[0] || null;
   }
 
   function textFor(id) {
@@ -71,7 +81,7 @@
     fillTile(button, entry);
 
     if (submitted) {
-      const right = id === CORRECT_ORDER[index];
+      const right = id === QUESTION.correctOrder[index];
       button.classList.add(right ? "is-correct" : "is-wrong");
       if (right) {
         const mark = document.createElement("span");
@@ -117,7 +127,7 @@
   function renderBank(settings) {
     if (!bankNode) return;
     bankNode.textContent = "";
-    BANK_ORDER.forEach(function (id) {
+    QUESTION.bankOrder.forEach(function (id) {
       bankNode.appendChild(picked.indexOf(id) >= 0 ? buildBankGhost(id) : buildBankTile(id, settings));
     });
   }
@@ -172,11 +182,11 @@
     const block = document.createDocumentFragment();
     const line = document.createElement("p");
     line.className = "order-feedback-sentence";
-    line.textContent = sentence(CORRECT_ORDER);
+    line.textContent = sentence(QUESTION.correctOrder);
     const translation = document.createElement("p");
     translation.className = "order-feedback-translation";
     translation.lang = "id";
-    translation.textContent = CORRECT_ID;
+    translation.textContent = QUESTION.correctId;
     block.appendChild(line);
     block.appendChild(translation);
     return block;
@@ -231,8 +241,8 @@
     if (submitted || picked.length === 0) return;
     submitted = true;
     attempts += 1;
-    const correct = picked.length === CORRECT_ORDER.length && picked.every(function (id, index) {
-      return id === CORRECT_ORDER[index];
+    const correct = picked.length === QUESTION.correctOrder.length && picked.every(function (id, index) {
+      return id === QUESTION.correctOrder[index];
     });
     const firstTry = correct && attempts === 1;
     const tier = correct ? (firstTry ? "correctFirstTry" : "correct") : "wrong";
@@ -244,7 +254,17 @@
     showFeedback(correct);
     announce(correct
       ? (praise && praise.zh) || "全对！"
-      : "正确顺序是：" + sentence(CORRECT_ORDER) + "。");
+      : "正确顺序是：" + sentence(QUESTION.correctOrder) + "。");
+
+    /* 跨页那一轮：本页不记账、不弹窗——中间题只是「下一题」，最后一题交给 round-flow 结算 */
+    if (roundState.active && roundFlow) {
+      const step = roundFlow.afterAnswer(correct);
+      const hasNext = step !== "finish";
+      if (submitNode) submitNode.disabled = !hasNext;
+      if (submitLabelNode) submitLabelNode.textContent = hasNext ? "下一题" : "已提交";
+      if (submitLabelIdNode) submitLabelIdNode.textContent = hasNext ? "Lanjut" : "Terkirim";
+      return;
+    }
 
     if (bridge && bridge.finish) {
       bridge.finish({
@@ -273,7 +293,18 @@
     });
   }
 
-  if (submitNode) submitNode.addEventListener("click", submit);
+  if (submitNode) submitNode.addEventListener("click", function () {
+    /* 跨页那一轮：答完后这颗按钮是【下一题】，点它跳下一题那一页 */
+    if (submitted && roundState.active && roundFlow) {
+      roundFlow.goNext();
+      return;
+    }
+    submit();
+  });
   if (clearNode) clearNode.addEventListener("click", clearAll);
+
+  /* 轮内（跨页那一轮）→ 题目从 round-content.js 取；不是轮内 → 本页自带的那道示范题 */
+  roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("order") : { active: false };
+  QUESTION = roundState.active ? roundState.question : DEMO_QUESTION;
   render();
 })(typeof window !== "undefined" ? window : globalThis);

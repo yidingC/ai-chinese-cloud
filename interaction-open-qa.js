@@ -7,7 +7,8 @@
    自动弹「收到啦」弹窗。结果态那颗键原地换成安静款（白底麦克风），按它才重录
     （重录只算练习，不重复记账；重录时撤销还没弹的弹窗，出新结果后重新计时）。
    全程不调用麦克风、不申请授权、不发声音。
-   进度记账由 shared/activity-bridge.js 负责（课堂跳转也交给它），本页只做界面并调用 finish()。 */
+   进度记账由 shared/activity-bridge.js 负责（课堂跳转也交给它），本页只做界面并调用 finish()。
+   跨页多题一轮（链接带 q / total）：进度行 / 下一题 / 记账与轮末弹窗交给 shared/round-flow.js。 */
 (function (global) {
   "use strict";
 
@@ -26,8 +27,9 @@
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
-  /* 单题数据。以后转正时换成接口返回的题目即可，界面和状态机不用动。 */
-  const QUESTION = {
+  /* 兜底的示范题。以后转正时换成接口返回的题目即可，界面和状态机不用动；
+     轮内时这道题从 round-content.js 取——改题目请改那个文件，这里只是"数据读不到也不白屏"的兜底 */
+  const DEMO_QUESTION = {
     id: "zhoumo-xihuan-zuo-shenme",
     prompt: "你周末喜欢做什么？",
     promptId: "Akhir pekan kamu suka melakukan apa?",
@@ -51,6 +53,9 @@
     praise: { zh: "说得不错！", id: "Bagus!" }
   };
 
+  /* 当前这一题：非轮内 = 上面那份兜底；轮内 = round-content.js 里 slot 对应的这道题 */
+  let QUESTION = DEMO_QUESTION;
+
   const el = {};
   let micState = "idle";        // idle（待作答）| recording（录音中）| recognizing（识别中）| result（已出学习卡）
   let submitted = false;        // 交卷只记一次，重录不重置
@@ -60,6 +65,11 @@
   let pressAt = 0;
   let recognizeTimer = 0;
   let modalTimer = 0;           // 还没弹出来的自动弹窗
+
+  /* 跨页多题一轮：进度行 / 下一题 / 记账都交给 shared/round-flow.js；不是轮内就照旧 */
+  let roundFlow = null;
+  let roundState = { active: false };
+  let roundAnswered = false;    // 轮内这一题只收尾一次（挡住重录重入）
 
   function setText(node, text) {
     if (node) node.textContent = text;
@@ -85,6 +95,10 @@
     el.praise = document.querySelector("[data-openqa-praise]");
     el.praiseId = document.querySelector("[data-openqa-praise-id]");
     el.announcer = document.querySelector("[data-openqa-announcer]");
+    el.nextBox = document.querySelector("[data-oq-next]");
+    el.nextButton = document.querySelector("[data-oq-next-btn]");
+    el.nextLabel = document.querySelector("[data-oq-next-label]");
+    el.nextLabelId = document.querySelector("[data-oq-next-label-id]");
   }
 
   function activityBridge() {
@@ -211,9 +225,37 @@
     if (overlap > 0) global.scrollBy({ top: overlap, behavior: "smooth" });
   }
 
+  /* 轮内：麦克风停用（变灰、点不动）；重练留给轮末弹窗的「再做一次」 */
+  function stopRetryInRound() {
+    if (el.mic) el.mic.disabled = true;
+  }
+
+  /* 轮内：中间题解禁【下一题】，最后一题换成【已提交】（口径与其它题型页一致） */
+  function stepToNext(step) {
+    if (step === "next" && el.nextButton) {
+      el.nextButton.disabled = false;
+    } else if (step === "finish") {
+      setText(el.nextLabel, "已提交");
+      setText(el.nextLabelId, "Terkirim");
+    }
+    /* 矮屏上这颗键可能正好压在贴底动作区后面：把它带进视野，别让学生自己找 */
+    if (el.nextBox && typeof el.nextBox.scrollIntoView === "function") {
+      el.nextBox.scrollIntoView({ block: "nearest" });
+    }
+  }
+
   /* 交卷：只记第一次（重录只算练习）。课堂模式记账后由公共脚本到点自动回课堂，页面不弹窗；
-     演示模式学习卡先出场，约 2 秒后自动弹「收到啦」（同选择题节奏） */
+     演示模式学习卡先出场，约 2 秒后自动弹「收到啦」（同选择题节奏）。
+     轮内：既不记账也不自动跳回课堂——这一题只收尾一次，把【下一题】交给 round-flow */
   function submitOnce() {
+    if (roundFlow && roundState.active) {
+      if (roundAnswered) return;
+      roundAnswered = true;
+      submitted = true;
+      stopRetryInRound();
+      stepToNext(roundFlow.afterAnswer(true));
+      return;
+    }
     const outcome = completeOnce();
     cancelModalSoon();
     /* 课堂模式：记账交给公共脚本，到点自动回课堂，页面始终不弹窗（重录也不弹）；
@@ -286,6 +328,7 @@
 
     /* 待作答、结果态（【再说一次】）：按下即开始新一次录音 */
     if (micState === "idle" || micState === "result") {
+      if (micState === "result" && roundState.active) return;   /* 轮内：说完这一题就到头了 */
       pressAt = Date.now();
       holdActive = true;
       startRecording();
@@ -315,6 +358,7 @@
   /* 键盘（回车 / 空格）没有指针事件，这里补一个开关式的入口 */
   function onMicClick(event) {
     if (event && typeof event.detail === "number" && event.detail !== 0) return;
+    if (micState === "result" && roundState.active) return;   /* 轮内：同上，重录不再触发 */
     if (micState === "idle" || micState === "result") startRecording();
     else if (micState === "recording") stopRecording();
   }
@@ -364,6 +408,15 @@
     cache();
     applyShellText();
     bindEvents();
+    /* 轮内多题：题目从 round-content.js 取，不是轮内就用本页自带的兜底题；
+       进度行 / 下一题 / 记账都交给 shared/round-flow.js */
+    roundFlow = global.AICloudRoundFlow || null;
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("open-qa") : { active: false };
+    QUESTION = roundState.active && roundState.question ? roundState.question : DEMO_QUESTION;
+    if (roundState.active && el.nextBox) el.nextBox.classList.remove("hidden");
+    if (roundState.active && el.nextButton) {
+      el.nextButton.addEventListener("click", function () { roundFlow.goNext(); });
+    }
     startQuestion();
   }
 

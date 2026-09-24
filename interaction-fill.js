@@ -1,7 +1,10 @@
 /* 补全句子 · interaction-fill.html 页面脚本（词库填空版）
    点词库里的词 → 填进最左边的空；点句子中已填的词 → 退回词库原位置。
    状态机：待作答 → 已选择（空都填了）→ 已提交（每题只提交一次）→ 正确 / 错误。
-   页面说事实（对错、正确答案），弹窗说情绪（句池来自 shared/feedback-copy.js）。 */
+   页面说事实（对错、正确答案），弹窗说情绪（句池来自 shared/feedback-copy.js）。
+
+   跨页混题型一轮（第 3 轮那种，链接带 q / total）：题目从 round-content.js 取，
+   进度行 / 跳下一题 / 记账与完成弹窗都交给 shared/round-flow.js；不是轮内时一切照旧。 */
 (function (global) {
   "use strict";
 
@@ -10,8 +13,8 @@
   const copy = global.AICloudFeedbackCopy || {};
   const MODAL_DELAY = 1400;          // 结果条先出场，弹窗后到
 
-  // 模拟题目：字段结构与后台 InteractionPlayer 的 fill 题型一致，sentence 里 ____ 表示空
-  const QUESTION = {
+  // 本页自带的示范题（题型体验用）：字段结构与后台 InteractionPlayer 的 fill 题型一致，sentence 里 ____ 表示空
+  const DEMO_QUESTION = {
     id: "fill-greeting-1",
     sentence: "我每天 ____ 七点 ____，然后 ____ 学校。",
     translationId: "Setiap hari saya bangun jam tujuh pagi, lalu pergi ke sekolah.",
@@ -47,14 +50,27 @@
     translation: document.querySelector("[data-fill-full-sentence-id]")
   };
 
-  const blanks = QUESTION.blanks.map(function (item, index) {
-    return { id: item.id, answer: item.answer, index: index, word: null, el: null, button: null };
-  });
+  /* 当前这道题（轮内来自 round-content.js，否则是上面那份示范题）；
+     空和词库都按题目数据现建：词块顺序每次进页面都打乱 */
+  let QUESTION = DEMO_QUESTION;
+  let blanks = [];
+  let words = [];
 
-  // 词块顺序每次进页面都打乱
-  const words = shuffle(QUESTION.words).map(function (item) {
-    return { id: item.id, text: item.text, pinyin: item.pinyin, home: null, button: null };
-  });
+  function loadQuestion(data) {
+    QUESTION = data || DEMO_QUESTION;
+    blanks = QUESTION.blanks.map(function (item, index) {
+      return { id: item.id, answer: item.answer, index: index, word: null, el: null, button: null };
+    });
+    words = shuffle(QUESTION.words).map(function (item, index) {
+      return {
+        id: item.id || "w-" + index,
+        text: item.text,
+        pinyin: item.pinyin,
+        home: null,
+        button: null
+      };
+    });
+  }
 
   let state = "idle";
   let attempts = 0;
@@ -63,6 +79,10 @@
   let lastSeconds = 0;
   let startedAt = Date.now();
   let modalTimer = 0;
+
+  /* 跨页混题型一轮（第 3 轮）：本页只是其中一道题，进度 / 下一题 / 记账交给 round-flow */
+  const roundFlow = global.AICloudRoundFlow || null;
+  let roundState = { active: false };
 
   function shuffle(list) {
     const items = list.slice();
@@ -433,6 +453,16 @@
       global.setTimeout(revealReceipt, 300);
     }
 
+    /* 跨页那一轮：本页不记账、不弹窗——中间题只是"下一题"，最后一题交给 round-flow 结算 */
+    if (roundState.active && roundFlow) {
+      const step = roundFlow.afterAnswer(allCorrect);
+      const hasNext = step !== "finish";
+      dom.submit.disabled = !hasNext;
+      if (dom.submitLabel) dom.submitLabel.textContent = hasNext ? "下一题" : "已提交";
+      if (dom.submitLabelId) dom.submitLabelId.textContent = hasNext ? "Lanjut" : "Terkirim";
+      return;
+    }
+
     reportFinish(results.length - misses.length);
 
     modalTimer = global.setTimeout(function () {
@@ -441,12 +471,23 @@
   }
 
   function boot() {
+    /* 轮内（跨页那一轮）→ 题目从 round-content.js 取；不是轮内 → 本页自带的那道示范题 */
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("fill") : { active: false };
+    loadQuestion(roundState.active ? roundState.question : DEMO_QUESTION);
+
     renderSentence();
     renderBank();
     words.forEach(updateWord);
     blanks.forEach(updateBlank);
 
-    if (dom.submit) dom.submit.addEventListener("click", submit);
+    if (dom.submit) dom.submit.addEventListener("click", function () {
+      /* 跨页那一轮：答完后这颗按钮是【下一题】，点它跳下一题那一页 */
+      if (isLocked() && roundState.active && roundFlow) {
+        roundFlow.goNext();
+        return;
+      }
+      submit();
+    });
     if (dom.clear) dom.clear.addEventListener("click", clearAll);
 
     startedAt = Date.now();

@@ -28,6 +28,12 @@
       <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
       <div class="situation-stage">
         <section class="situation-card" data-situation-card aria-labelledby="situation-scene">
+          <!-- 轮内多题（跨页那一轮）：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+          <div class="round-progress hidden" data-round-progress>
+            <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+            <p class="round-progress-text" data-round-text></p>
+          </div>
+
           <div class="situation-scene">
             <div class="situation-slot" data-situation-slot></div>
             <h2 class="situation-scene-text" id="situation-scene" data-situation-scene-text></h2>
@@ -65,6 +71,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-situation.js"></script>
 </body>
 </html>

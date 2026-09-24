@@ -28,6 +28,12 @@
       <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
       <div class="dialogue-stage">
         <section class="dialogue-card" data-dialogue-card aria-label="对话补全">
+          <!-- 轮内多题（跨页那一轮）：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+          <div class="round-progress hidden" data-round-progress>
+            <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+            <p class="round-progress-text" data-round-text></p>
+          </div>
+
           <ul class="dialogue-thread" data-dialogue-thread>
             <li class="dialogue-turn is-them">
               <span class="dialogue-avatar" aria-hidden="true">🧑</span>
@@ -85,6 +91,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-dialogue.js"></script>
 </body>
 </html>

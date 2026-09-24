@@ -5,6 +5,7 @@
    本题是纯点选配对、不画线：没有连线层（<svg>），也没有窗口尺寸重算逻辑。
    进度和结果不再显示成文字行，只通过视觉隐藏的播报区说给读屏软件。
    进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并调用 finish()。
+   跨页多题一轮（链接带 q / total）：进度行 / 下一题 / 记账与轮末弹窗交给 shared/round-flow.js。
    图槽数据固定保留 icon / image / imageAlt 三个字段：image 有值时渲染真图，
    为空时渲染 emoji；以后换真图只改 PAIRS 数据，不改页面结构和样式。 */
 (function (global) {
@@ -37,6 +38,10 @@
   let modalTimer = 0;
   let madeMistake = false;
 
+  /* 跨页多题一轮：进度行 / 下一题 / 记账都交给 shared/round-flow.js；不是轮内就照旧 */
+  let roundFlow = null;
+  let roundState = { active: false };
+
   function setText(node, text) {
     if (node) node.textContent = text;
   }
@@ -44,6 +49,10 @@
   function cache() {
     el.board = document.querySelector("[data-pm-board]");
     el.announcer = document.querySelector("[data-pm-announcer]");
+    el.nextBox = document.querySelector("[data-pm-next]");
+    el.nextButton = document.querySelector("[data-pm-next-btn]");
+    el.nextLabel = document.querySelector("[data-pm-next-label]");
+    el.nextLabelId = document.querySelector("[data-pm-next-label-id]");
   }
 
   function activityBridge() {
@@ -191,6 +200,17 @@
   /* 全部 4 组配对成功：调用 finish()（课堂模式记进度）；两种模式都弹完成弹窗 */
   function finishBoard() {
     lastSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    /* 轮内：不记账、不弹窗（结算由最后一题那页的 round-flow 做），只处理这颗按钮 */
+    if (roundFlow && roundState.active) {
+      const step = roundFlow.afterAnswer(!madeMistake);
+      if (step === "next") {
+        if (el.nextButton) el.nextButton.disabled = false;
+      } else if (step === "finish") {
+        if (el.nextLabel) el.nextLabel.textContent = "已提交";
+        if (el.nextLabelId) el.nextLabelId.textContent = "Terkirim";
+      }
+      return;
+    }
     completeOnce(lastSeconds);
     modalTimer = global.setTimeout(openModal, SOLO_MODAL_DELAY);
   }
@@ -266,6 +286,13 @@
   function boot() {
     cache();
     applyShellText();
+    /* 轮内多题：进度行 / 下一题 / 记账都交给 shared/round-flow.js；不是轮内就照旧 */
+    roundFlow = global.AICloudRoundFlow || null;
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("picture-match") : { active: false };
+    if (roundState.active && el.nextBox) el.nextBox.classList.remove("hidden");
+    if (roundState.active && el.nextButton) {
+      el.nextButton.addEventListener("click", function () { roundFlow.goNext(); });
+    }
     startBoard();
   }
 

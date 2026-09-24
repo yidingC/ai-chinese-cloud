@@ -162,6 +162,20 @@
   white-space: nowrap;
 }
 
+/* ---------- 轮内多题：作答卡下面的【下一题】——常驻，不做入场动画 ---------- */
+.pm-next {
+  margin: 18px 0 0;
+}
+
+/* 没连完＝灰、不带紫（口径与其它题型页的禁用键一致） */
+.pm-next .primary-button[disabled] {
+  opacity: 1;
+  color: #a5a0bd;
+  background: #eceaf4;
+  box-shadow: 0 3px 0 #e2dfee;
+  cursor: not-allowed;
+}
+
 /* ≤360px 窄屏：收紧卡内边距、行距和图槽，四组一屏看得舒服 */
 @media (max-width: 360px) {
   .pm-card {

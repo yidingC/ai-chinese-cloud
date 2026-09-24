@@ -90,6 +90,20 @@
   gap: 8px;
 }
 
+/* ---------- 轮内多题：棋盘下面的【下一题】——常驻，不做入场动画 ---------- */
+.memory-next {
+  margin: 18px 0 0;
+}
+
+/* 没翻满＝灰、不带紫（口径与其它题型页的禁用键一致） */
+.memory-next .primary-button[disabled] {
+  opacity: 1;
+  color: var(--button-disabled-text);
+  background: var(--button-disabled-fill);
+  box-shadow: 0 3px 0 #e2dfee;
+  cursor: not-allowed;
+}
+
 .memory-card {
   position: relative;
   aspect-ratio: 0.72;

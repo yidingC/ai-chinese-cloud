@@ -5,40 +5,48 @@
    → 三组完成 → 0.9 秒后弹公共中性弹窗。
    页面不放说明文字：引导只交给两枚步骤标签；状态只做无障碍播报（视觉隐藏）。
    闯关式手感：选错只标红加抖动、原地重试、不显示正确答案，所以 correct 恒为 true。
-   进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并调用 finish()。 */
+   进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并调用 finish()。
+   跨页多题一轮（链接带 q / total）：进度行 / 下一题 / 记账与轮末弹窗交给 shared/round-flow.js。 */
 (function (global) {
   "use strict";
 
-  /* 三组模拟内容（任务书 3.4 的例子；第 2、3 组的候选按同样规则配：
-     汉字和含义各 3 个、都含正确项、干扰项同类） */
-  const GROUPS = [
-    {
-      key: "shu",
-      pinyin: "shū",
-      word: "书",
-      meaning: "buku",
-      wordOptions: ["书", "笔", "本"],
-      meaningOptions: ["buku", "pena", "buku tulis"]
-    },
-    {
-      key: "bi",
-      pinyin: "bǐ",
-      word: "笔",
-      meaning: "pena",
-      wordOptions: ["本", "笔", "书"],
-      meaningOptions: ["buku tulis", "pena", "buku"]
-    },
-    {
-      key: "benzi",
-      pinyin: "běnzi",
-      word: "本子",
-      meaning: "buku tulis",
-      wordOptions: ["书", "本子", "笔"],
-      meaningOptions: ["pena", "buku tulis", "buku"]
-    }
-  ];
+  /* 兜底的示范题（任务书 3.4 的例子；第 2、3 组的候选按同样规则配：
+     汉字和含义各 3 个、都含正确项、干扰项同类）。
+     轮内时这道题从 round-content.js 取——改题目请改那个文件，这里只是"数据读不到也不白屏"的兜底 */
+  const DEMO_QUESTION = {
+    id: "py-shu-bi-benzi",
+    groups: [
+      {
+        key: "shu",
+        pinyin: "shū",
+        word: "书",
+        meaning: "buku",
+        wordOptions: ["书", "笔", "本"],
+        meaningOptions: ["buku", "pena", "buku tulis"]
+      },
+      {
+        key: "bi",
+        pinyin: "bǐ",
+        word: "笔",
+        meaning: "pena",
+        wordOptions: ["本", "笔", "书"],
+        meaningOptions: ["buku tulis", "pena", "buku"]
+      },
+      {
+        key: "benzi",
+        pinyin: "běnzi",
+        word: "本子",
+        meaning: "buku tulis",
+        wordOptions: ["书", "本子", "笔"],
+        meaningOptions: ["pena", "buku tulis", "buku"]
+      }
+    ]
+  };
 
-  const TOTAL_GROUPS = GROUPS.length;
+  /* 当前这一题 + 它那三组（下面的正文一直用 GROUPS / TOTAL_GROUPS 这两个名字） */
+  let QUESTION = DEMO_QUESTION;
+  let GROUPS = QUESTION.groups;
+  let TOTAL_GROUPS = GROUPS.length;
   const WRONG_RESET_DELAY = 720;      // 选错：红块和抖动保留 720ms 后复原，可以继续点
   const ADVANCE_DELAY = 900;          // 本组完成后 0.9 秒自动进入下一组
   const SOLO_MODAL_DELAY = 900;       // 三组全配好后等 0.9 秒再弹完成弹窗，让最后一组的 ✓ 被看见
@@ -56,6 +64,17 @@
   let advanceTimer = 0;
   let modalTimer = 0;
   let madeMistake = false;
+
+  /* 跨页多题一轮：进度行 / 下一题 / 记账都交给 shared/round-flow.js；不是轮内就照旧 */
+  let roundFlow = null;
+  let roundState = { active: false };
+
+  /* 轮内时把这一题换成数据里的那道；数据写坏就退回兜底（绝不白屏） */
+  function loadQuestion(data) {
+    QUESTION = data && Array.isArray(data.groups) && data.groups.length ? data : DEMO_QUESTION;
+    GROUPS = QUESTION.groups;
+    TOTAL_GROUPS = GROUPS.length;
+  }
 
   function setText(node, text) {
     if (node) node.textContent = text;
@@ -76,6 +95,10 @@
     el.feedbackCopy = document.querySelector("[data-py-feedback-copy]");
     el.slots = document.querySelector("[data-py-done-list]");
     el.status = document.querySelector("[data-activity-status]");
+    el.nextBox = document.querySelector("[data-py-next]");
+    el.nextButton = document.querySelector("[data-py-next-btn]");
+    el.nextLabel = document.querySelector("[data-py-next-label]");
+    el.nextLabelId = document.querySelector("[data-py-next-label-id]");
   }
 
   function activityBridge() {
@@ -295,11 +318,31 @@
     startBoard();
   }
 
-  /* 三组全部配好：全部锁定，调用 finish()（课堂模式记进度）；
-     两种模式都等 0.9 秒弹完成弹窗 */
+  /* 轮内：中间题解禁【下一题】，最后一题换成【已提交】（口径与其它题型页一致） */
+  function stepToNext(step) {
+    if (step === "next" && el.nextButton) {
+      el.nextButton.disabled = false;
+    } else if (step === "finish") {
+      setText(el.nextLabel, "已提交");
+      setText(el.nextLabelId, "Terkirim");
+    }
+    /* 矮屏上这颗键可能落在屏幕外：把它带进视野，别让学生自己找 */
+    if (el.nextBox && typeof el.nextBox.scrollIntoView === "function") {
+      el.nextBox.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  /* 三组全部配好：全部锁定。轮内只处理这颗常驻的【下一题】——不记账、不弹弹窗（结算交给 round-flow），
+     这一题只走一次；题型体验照旧：调用 finish()（课堂模式记进度），两种模式都等 0.9 秒弹完成弹窗 */
   function finishBoard() {
     lockAllOptions();
     lastSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    if (roundFlow && roundState.active) {
+      if (finished) return;
+      finished = true;
+      stepToNext(roundFlow.afterAnswer(true));
+      return;
+    }
     completeOnce(lastSeconds);
     modalTimer = global.setTimeout(openModal, SOLO_MODAL_DELAY);
   }
@@ -341,6 +384,14 @@
   function boot() {
     cache();
     applyShellText();
+    /* 轮内多题：题目从 round-content.js 取，不是轮内就用本页自带的兜底题 */
+    roundFlow = global.AICloudRoundFlow || null;
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("pinyin-match") : { active: false };
+    loadQuestion(roundState.active ? roundState.question : DEMO_QUESTION);
+    if (roundState.active && el.nextBox) el.nextBox.classList.remove("hidden");
+    if (roundState.active && el.nextButton) {
+      el.nextButton.addEventListener("click", function () { roundFlow.goNext(); });
+    }
     startBoard();
   }
 
@@ -352,5 +403,9 @@
 
   document.addEventListener("DOMContentLoaded", applyShellText);
 
-  global.AICloudPinyinMatchPage = { boot: boot, startBoard: startBoard, groups: GROUPS };
+  global.AICloudPinyinMatchPage = {
+    boot: boot,
+    startBoard: startBoard,
+    groups: function () { return QUESTION.groups; }
+  };
 })(typeof window !== "undefined" ? window : globalThis);

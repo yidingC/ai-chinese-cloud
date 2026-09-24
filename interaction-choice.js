@@ -1,15 +1,20 @@
-/* 快速选择 · 看词选大图 —— 页面脚本（一轮多题：点图选中 → 提交判分 → 下一题 → 轮末弹窗）
+/* 快速选择 · 看词选大图 —— 页面脚本（两种轮：本页三道题 / 跨页混题型一轮里的这一道）
    题干给一个词 + 拼音，四个大图里点一张选中（紫），点【提交 / Kirim】才判分；提交前可以改选。
-   一轮 = 一组题：中间题答完按钮变【下一题 / Lanjut】，最后一题答完才记账（整轮用时 + 整轮有没有错），
-   1.4 秒后出完成弹窗。页面给事实（对错 + 正确图的意思），弹窗给情绪（句池来自 shared/feedback-copy.js）。 */
+   页面给事实（对错 + 正确图的意思），弹窗给情绪（句池来自 shared/feedback-copy.js）。
+
+   轮外（第 1 轮、题型体验）：本页自带三道示范题，页内换题——中间题答完按钮变【下一题 / Lanjut】，
+   最后一题答完记账（整轮用时 + 整轮有没有错），1.4 秒后出完成弹窗。
+   轮内（第 3 轮那种跨页混题型一轮，链接带 q / total）：本页只跑数据里的这一道题，
+   进度行、跳下一题、记账与完成弹窗都交给 shared/round-flow.js。 */
 (function (global) {
   "use strict";
 
   const MODAL_DELAY = 1400;          // 结果条先出场，弹窗后到
 
-  /* 一轮的题：题干是「能被图清楚表达的具象名词」；选项只有图和印尼语意思（挂在 aria-label），不放中文字。
-     内容以后由后台给，这里先写死三道示范题（每题 4 个图形选项、只有 1 个 correct）。 */
-  const QUESTIONS = [
+  /* 本页自带的示范题（第 1 轮 / 题型体验用）：题干是「能被图清楚表达的具象名词」；
+     选项只有图和印尼语意思（挂在 aria-label），不放中文字。
+     内容以后由后台给；跨页那一轮的题在 round-content.js 里。 */
+  const DEMO_QUESTIONS = [
     {
       id: "choice-drink-1",
       word: "一杯茶",
@@ -58,7 +63,12 @@
   let roundStartedAt = 0;     // 整轮计时：进第 1 题那刻开始
   let modalTimer = 0;
 
-  const isLastQuestion = () => index >= QUESTIONS.length - 1;
+  /* 跨页混题型一轮（第 3 轮）：本页只是其中一道题，进度 / 下一题 / 记账都交给 round-flow */
+  const roundFlow = global.AICloudRoundFlow || null;
+  let roundState = { active: false };
+  let questions = DEMO_QUESTIONS;
+
+  const isLastQuestion = () => index >= questions.length - 1;
 
   function setText(node, text) {
     if (node) node.textContent = text;
@@ -84,8 +94,8 @@
     el.word = document.querySelector("[data-choice-word]");
     el.pinyin = document.querySelector("[data-choice-pinyin]");
     el.options = document.querySelector("[data-choice-options]");
-    el.progressDots = document.querySelector("[data-choice-progress-dots]");
-    el.progressText = document.querySelector("[data-choice-progress-text]");
+    el.progressDots = document.querySelector("[data-round-dots]");
+    el.progressText = document.querySelector("[data-round-text]");
     el.submit = document.querySelector("[data-choice-submit]");
     el.submitLabel = document.querySelector("[data-choice-submit-label]");
     el.submitLabelId = document.querySelector("[data-choice-submit-label-id]");
@@ -149,9 +159,14 @@
     setText(el.submitLabelId, last ? "Terkirim" : "Lanjut");
   }
 
-  /* 进度行：做完＝绿、当前＝紫、没做＝灰；右边第几题 */
+  /* 进度行：做完＝绿、当前＝紫、没做＝灰；右边第几题。
+     跨页那一轮：整行由 round-flow 按 URL 里的 q / total 重画（本页只有一道题，自己算不出总数） */
   function renderProgress() {
-    setText(el.progressText, "第 " + (index + 1) + " 题 / 共 " + QUESTIONS.length + " 题");
+    if (roundState.active && roundFlow) {
+      roundFlow.renderProgress();
+      return;
+    }
+    setText(el.progressText, "第 " + (index + 1) + " 题 / 共 " + questions.length + " 题");
     if (!el.progressDots) return;
     Array.prototype.forEach.call(el.progressDots.children, function (dot, i) {
       const done = i < index || (i === index && submitted);
@@ -163,7 +178,7 @@
   function buildProgressDots() {
     if (!el.progressDots) return;
     el.progressDots.innerHTML = "";
-    for (let i = 0; i < QUESTIONS.length; i += 1) {
+    for (let i = 0; i < questions.length; i += 1) {
       el.progressDots.appendChild(document.createElement("i"));
     }
   }
@@ -216,7 +231,7 @@
 
   /* 渲染第 index 题：题干、选项、进度、按钮都按"本题还没答"重置 */
   function renderQuestion(animate) {
-    const question = QUESTIONS[index] || QUESTIONS[0];
+    const question = questions[index] || questions[0];
     selectedId = "";
     submitted = false;
 
@@ -355,6 +370,22 @@
       global.setTimeout(revealReceipt, 300);
     }
 
+    /* 跨页那一轮（本页只是其中一道题）：不记账、不弹窗。
+       中间题按钮变【下一题】由 round-flow 定；最后一题才由它结算 + 弹窗 */
+    if (roundState.active && roundFlow) {
+      const step = roundFlow.afterAnswer(isCorrect);
+      if (step === "finish") {
+        el.submit.disabled = true;
+        setText(el.submitLabel, "已提交");
+        setText(el.submitLabelId, "Terkirim");
+      } else {
+        el.submit.disabled = false;
+        setText(el.submitLabel, "下一题");
+        setText(el.submitLabelId, "Lanjut");
+      }
+      return;
+    }
+
     /* 中间题：不记账、不弹窗，等学生点【下一题】 */
     if (!isLastQuestion()) return;
 
@@ -372,15 +403,25 @@
     if (!el.submit) return;
     /* 一颗按钮走完一轮：没答＝提交；中间题答完＝下一题；最后一题答完＝禁用 */
     el.submit.addEventListener("click", function () {
-      if (submitted) nextQuestion();
-      else submit();
+      if (submitted) {
+        /* 跨页那一轮：这一题的收尾是"跳下一页"，不是页内换题 */
+        if (roundState.active && roundFlow) roundFlow.goNext();
+        else nextQuestion();
+        return;
+      }
+      submit();
     });
   }
 
   function boot() {
     cache();
     applyShellText();
-    buildProgressDots();
+
+    /* 轮内（跨页那一轮）→ 只走数据里的这一道题；不是轮内 → 本页自带的三道示范题 */
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("choice") : { active: false };
+    questions = roundState.active ? [roundState.question] : DEMO_QUESTIONS;
+
+    if (!roundState.active) buildProgressDots();
     bindEvents();
     roundStartedAt = Date.now();
     renderQuestion(false);

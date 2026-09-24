@@ -5,7 +5,8 @@
    语音题不打分：反馈只有一句鼓励（只夸"开口说了"，不夸结果）；录音本身就是交卷——
    出结果时记账，两种模式都约 2 秒后弹「收到啦」，页面没有【完成】按钮。
    以后接真录音 + 语音识别时，往这张学习卡上加内容即可，页面骨架和状态机不用重写。
-   进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并在出结果时调用 finish()。 */
+   进度记账由 shared/activity-bridge.js 负责（课堂跳转由完成弹窗的按钮执行），本页只做界面并在出结果时调用 finish()。
+   跨页多题一轮（链接带 q / total）：进度行 / 下一题 / 记账与轮末弹窗交给 shared/round-flow.js。 */
 (function (global) {
   "use strict";
 
@@ -25,15 +26,19 @@
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
-  /* 单题数据（任务书 6.4 的例子）。prompt 只给读屏，页面上不写说明；
-     cheer 只夸"开口说了"这件事；text / pinyin 是学习卡里能带走的参考读音。 */
-  const QUESTION = {
+  /* 兜底的示范题（任务书 6.4 的例子）。prompt 只给读屏，页面上不写说明；
+     cheer 只夸"开口说了"这件事；text / pinyin 是学习卡里能带走的参考读音。
+     轮内时这道题从 round-content.js 取——改题目请改那个文件，这里只是"数据读不到也不白屏"的兜底 */
+  const DEMO_QUESTION = {
     id: "gen-du-ni-hao",
     prompt: "听一遍，然后跟着读",
     text: "你好",
     pinyin: "nǐ hǎo",
     cheer: { zh: "说得不错！", id: "Bagus!" }
   };
+
+  /* 当前这一题：非轮内 = 上面那份兜底；轮内 = round-content.js 里 slot 对应的这道题 */
+  let QUESTION = DEMO_QUESTION;
 
   const el = {};
   let phase = "idle";           // idle | recording | recognizing | result
@@ -50,6 +55,11 @@
   let listenTimer = 0;
   let modalTimer = 0;
   let modalObserver = null;
+
+  /* 跨页多题一轮：进度行 / 下一题 / 记账都交给 shared/round-flow.js；不是轮内就照旧 */
+  let roundFlow = null;
+  let roundState = { active: false };
+  let roundAnswered = false;          // 轮内这一题只收尾一次（挡住重录重入）
 
   function setText(node, text) {
     if (node) node.textContent = text;
@@ -73,6 +83,10 @@
     el.cheerId = document.querySelector("[data-read-aloud-cheer-id]");
     el.cheerRow = document.querySelector("[data-read-aloud-cheer-row]");
     el.announcer = document.querySelector("[data-read-aloud-announcer]");
+    el.nextBox = document.querySelector("[data-ra-next]");
+    el.nextButton = document.querySelector("[data-ra-next-btn]");
+    el.nextLabel = document.querySelector("[data-ra-next-label]");
+    el.nextLabelId = document.querySelector("[data-ra-next-label-id]");
   }
 
   function activityBridge() {
@@ -153,6 +167,8 @@
 
   function startRecording(nextGesture) {
     if (phase !== "idle" && phase !== "result") return;
+    /* 轮内做完这一题：重录入口关掉（想重练等轮末「再做一次」），别让这一轮再收尾一次 */
+    if (roundState.active && roundAnswered) return;
     global.clearTimeout(recognizeTimer);
     /* 重录＝取消还没弹出来的自动弹窗，等新结果出来再重新计时 */
     global.clearTimeout(modalTimer);
@@ -173,7 +189,27 @@
     recognizeTimer = global.setTimeout(showResult, RECOGNIZE_MS);
   }
 
-  /* 出结果＝交卷：先记账（课堂模式由公共脚本负责）；两种模式都约 2 秒后弹窗 */
+  /* 轮内：重录键停用（变灰、点不动）；重练留给轮末弹窗的「再做一次」 */
+  function stopRetryInRound() {
+    if (el.record) el.record.disabled = true;
+  }
+
+  /* 轮内：中间题解禁【下一题】，最后一题换成【已提交】（口径与其它题型页一致） */
+  function stepToNext(step) {
+    if (step === "next" && el.nextButton) {
+      el.nextButton.disabled = false;
+    } else if (step === "finish") {
+      setText(el.nextLabel, "已提交");
+      setText(el.nextLabelId, "Terkirim");
+    }
+    /* 矮屏上这颗键可能正好压在贴底动作区后面：把它带进视野，别让学生自己找 */
+    if (el.nextBox && typeof el.nextBox.scrollIntoView === "function") {
+      el.nextBox.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  /* 出结果＝交卷。轮内：不记账、不弹「收到啦」——这一题只收尾一次，把【下一题】交给 round-flow；
+     题型体验：先记账（课堂模式由公共脚本负责），两种模式都约 2 秒后弹窗 */
   function showResult() {
     phase = "result";
     paintRecord();
@@ -181,6 +217,14 @@
     setHidden(el.cheerRow, false);
     announce(QUESTION.cheer.zh + "参考读音：" + QUESTION.text + "，" + QUESTION.pinyin + "。");
     if (el.result && typeof el.result.focus === "function") el.result.focus({ preventScroll: true });
+    if (roundFlow && roundState.active) {
+      if (roundAnswered) return;
+      roundAnswered = true;
+      finished = true;
+      stopRetryInRound();
+      stepToNext(roundFlow.afterAnswer(true));
+      return;
+    }
     completeOnce();
     scheduleModal();
   }
@@ -357,6 +401,15 @@
     cache();
     applyShellText();
     bindEvents();
+    /* 轮内多题：题目从 round-content.js 取，不是轮内就用本页自带的兜底题；
+       进度行 / 下一题 / 记账都交给 shared/round-flow.js */
+    roundFlow = global.AICloudRoundFlow || null;
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("read-aloud") : { active: false };
+    QUESTION = roundState.active && roundState.question ? roundState.question : DEMO_QUESTION;
+    if (roundState.active && el.nextBox) el.nextBox.classList.remove("hidden");
+    if (roundState.active && el.nextButton) {
+      el.nextButton.addEventListener("click", function () { roundFlow.goNext(); });
+    }
     startQuestion();
   }
 

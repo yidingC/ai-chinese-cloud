@@ -25,6 +25,12 @@
     </header>
 
     <main class="page page-content">
+      <!-- 轮内多题（跨页那一轮）：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+      <div class="round-progress hidden" data-round-progress>
+        <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+        <p class="round-progress-text" data-round-text></p>
+      </div>
+
       <!-- 卡片 + 学习卡：学习卡是卡片的下一层兄弟，平时整块压进卡片下沿后面，出结果才往下滑出来 -->
       <div class="openqa-stage">
         <!-- 卡片只装题干（中文 + 印尼语）＋插画带；按钮那一组已经搬到贴底动作区 -->
@@ -103,6 +109,14 @@
       </div>
 
       <p class="openqa-announcer" data-openqa-announcer role="status" aria-live="polite"></p>
+
+      <!-- 轮内多题：【下一题 / Lanjut】。轮内进场就摆着（灰、点不动），出结果才变紫可点；题型体验时整块不出现 -->
+      <div class="oq-next hidden" data-oq-next>
+        <button type="button" class="primary-button btn-stacked" data-oq-next-btn disabled>
+          <span data-oq-next-label>下一题</span>
+          <span class="btn-id" lang="id" data-oq-next-label-id>Lanjut</span>
+        </button>
+      </div>
     </main>
   </div>
 
@@ -113,6 +127,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-open-qa.js"></script>
 </body>
 </html>

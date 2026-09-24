@@ -29,6 +29,12 @@
       <div class="listening-stage">
         <section class="listening-card" aria-labelledby="listening-prompt">
 
+          <!-- 轮内多题（跨页那一轮）：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+          <div class="round-progress hidden" data-round-progress>
+            <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+            <p class="round-progress-text" data-round-text></p>
+          </div>
+
           <!-- 题面只说给读屏听：页面上让大按钮「🔊 听一听」自己说话 -->
           <p class="listening-sr" id="listening-prompt" data-listening-prompt>听一听，选出你听到的</p>
 
@@ -75,6 +81,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-listening.js"></script>
 </body>
 </html>

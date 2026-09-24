@@ -27,6 +27,12 @@
     <main class="page page-content">
       <div class="order-stage">
         <section class="order-card" aria-labelledby="order-scene">
+          <!-- 轮内多题（跨页那一轮）：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+          <div class="round-progress hidden" data-round-progress>
+            <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+            <p class="round-progress-text" data-round-text></p>
+          </div>
+
           <p class="order-scene" id="order-scene">
             <span class="order-scene-icon" aria-hidden="true">🛒</span>
             <span>你和妈妈在水果店，你想告诉她你要买什么。<span class="order-scene-id" lang="id">Kamu dan ibumu ada di toko buah. Katakan apa yang ingin kamu beli.</span></span>
@@ -68,6 +74,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-order.js"></script>
 </body>
 </html>

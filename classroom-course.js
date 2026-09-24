@@ -21,10 +21,15 @@ window.AICloudClassroomCourse = {
                题型名只在题面页顶部出现，卡片上不再写题型
      tone      卡片配色，只有三种：violet（紫）/ mint（薄荷绿）/ orange（橙）；不填或写错按顺序自动分配
      title     这一轮练什么 · 中文（轮次主题，不是题型名；由教研/老师填，后台以后给同样的格子）
-     subtitle  这一轮练什么 · 印尼语（跟 title 成对；两行里空的那一行整行不显示） */
+     subtitle  这一轮练什么 · 印尼语（跟 title 成对；两行里空的那一行整行不显示）
+     questionCount
+               这一轮一共几道题（跨页混题型一轮 >1，题目在 round-content.js 里；不写＝这一页就是这道题）。
+               写了以后课堂页的链接会带上 q=1&total=N，由 shared/round-flow.js 把整轮串起来。 */
   levels: [
     { type: "choice", tone: "violet", title: "打招呼", subtitle: "Sapaan" },
     { type: "picture", tone: "mint", title: "看图认词", subtitle: "Kenali gambar" },
-    { type: "match", tone: "orange", title: "问候和时间", subtitle: "Sapaan & waktu" }
+    /* 第 3 轮是试点版"混题型一轮"（快速选择 → 听音选词 → 连线配对 → 补全句子，共 4 题），
+       type 写的是这一轮第一道题的页面；题目内容在 round-content.js */
+    { type: "choice", tone: "orange", title: "问候和时间", subtitle: "Sapaan & waktu", questionCount: 4 }
   ]
 };

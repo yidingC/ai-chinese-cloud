@@ -27,7 +27,21 @@
     <main class="page page-content">
       <p class="memory-announcer" data-memory-progress role="status" aria-live="polite">已找到 0 / 4 对</p>
 
+      <!-- 轮内多题：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+      <div class="round-progress hidden" data-round-progress>
+        <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+        <p class="round-progress-text" data-round-text></p>
+      </div>
+
       <section class="memory-grid" data-memory-grid aria-label="中文和印尼语问候语翻牌配对"></section>
+
+      <!-- 轮内多题：【下一题 / Lanjut】。轮内进场就摆着（灰、点不动），翻满 4 对才变紫可点；题型体验时整块不出现 -->
+      <div class="memory-next hidden" data-memory-next>
+        <button type="button" class="primary-button btn-stacked" data-memory-next-btn disabled>
+          <span data-memory-next-label>下一题</span>
+          <span class="btn-id" lang="id" data-memory-next-label-id>Lanjut</span>
+        </button>
+      </div>
     </main>
   </div>
 
@@ -37,6 +51,9 @@
   <script type="module" src="shared/platform-store.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="shared/activity-bridge.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

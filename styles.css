@@ -1752,3 +1752,43 @@ a:focus-visible {
   overscroll-behavior: contain;
   padding-right: 2px;
 }
+
+/* ---------- 轮内多题 · 卡片顶部的进度行（跨页那一轮共用；不是轮内时整块不出现） ----------
+   小点：做完＝绿、当前＝紫、没做＝灰；右边「第 N 题 / 共 M 题」。
+   原先长在 interaction-choice.css 里（叫 .choice-progress*），现在挪到这里给四个题型页共用，
+   视觉一模一样：改这里一处，四页一起变。 */
+.round-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.round-progress-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.round-progress-dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ded9f2;
+  transition: background .2s ease, transform .2s ease;
+}
+
+.round-progress-dots i.is-done { background: var(--answer-correct, #1fbf8f); }
+
+.round-progress-dots i.is-now {
+  background: var(--purple);
+  transform: scale(1.2);
+}
+
+.round-progress-text {
+  margin: 0;
+  color: var(--text-subtle, var(--muted));
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}

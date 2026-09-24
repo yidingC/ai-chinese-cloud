@@ -452,3 +452,28 @@
     border-radius: 0 0 34px 34px;
   }
 }
+
+/* ---------- 轮内多题：卡下面的【下一题】——常驻，不做入场动画 ----------
+   回执条会从卡片下沿滑出来、露出约 58px：这颗键让它一让，排在条的下沿后面 */
+.ra-next {
+  margin: 76px 0 0;
+  /* 出结果时这颗键要滚进视野（见 js）：贴底的录音区约 150px，滚的时候让开它 */
+  scroll-margin-bottom: calc(150px + env(safe-area-inset-bottom));
+}
+
+/* 没出结果＝灰、不带紫（口径与其它题型页的禁用键一致） */
+.ra-next .primary-button[disabled] {
+  opacity: 1;
+  color: var(--button-disabled-text);
+  background: var(--button-disabled-fill);
+  box-shadow: 0 3px 0 #e2dfee;
+  cursor: not-allowed;
+}
+
+/* 轮内做完这一题：底栏录音键停用（变灰、点不动）——重练留给轮末弹窗的「再做一次」 */
+.read-aloud-record-button[disabled] {
+  color: var(--button-disabled-text);
+  background: var(--button-disabled-fill);
+  box-shadow: 0 3px 0 #e2dfee;
+  cursor: not-allowed;
+}

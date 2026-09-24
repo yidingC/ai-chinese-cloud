@@ -14,8 +14,9 @@
   const modal = global.AICloudFeedbackModal || null;
   const copy = global.AICloudFeedbackCopy || {};
 
-  /* 单题数据（题型体验用的模拟题目；字块顺序在进入页面时打乱） */
-  const QUESTION = {
+  /* 本页自带的示范题（题型体验用；字块顺序在进入页面时打乱）：
+     字段结构与 round-content.js 里同题型的题目一致 */
+  const DEMO_QUESTION = {
     id: "mother",
     icon: "👩",
     image: "",
@@ -26,6 +27,9 @@
     answerPinyin: "māma",
     tiles: ["妈", "妈", "爸", "姐", "哥", "弟"]
   };
+
+  /* 当前这道题（轮内来自 round-content.js，否则是上面那份示范题） */
+  let QUESTION = DEMO_QUESTION;
 
   const el = {};
   let tiles = [];          // [{ id, text }]，打乱后的字块，重复字各有各的 id
@@ -38,6 +42,10 @@
   let startedAt = 0;
   let modalTimer = 0;
   let focusRequest = null; // { where: "slot" | "tile", key: Number | String }
+
+  /* 跨页混题型一轮（链接带 q / total）：进度 / 下一题 / 记账与轮末弹窗交给 shared/round-flow.js */
+  const roundFlow = global.AICloudRoundFlow || null;
+  let roundState = { active: false };
 
   function setText(node, text) {
     if (node) node.textContent = text;
@@ -361,6 +369,16 @@
       ? "答对了！" + QUESTION.answerWord + " " + QUESTION.answerPinyin + "。"
       : "再想想。正确答案是：" + QUESTION.answerWord + " " + QUESTION.answerPinyin + "。");
 
+    /* 跨页那一轮：本页不记账、不弹窗——中间题只是「下一题」，最后一题交给 round-flow 结算 */
+    if (roundState.active && roundFlow) {
+      const step = roundFlow.afterAnswer(lastCorrect);
+      const hasNext = step !== "finish";
+      if (el.submit) el.submit.disabled = !hasNext;
+      setText(el.submitLabel, hasNext ? "下一题" : "已提交");
+      setText(el.submitLabelId, hasNext ? "Lanjut" : "Terkirim");
+      return;
+    }
+
     completeOnce();
     modalTimer = global.setTimeout(function () {
       openModal(tier, praise);
@@ -404,7 +422,14 @@
         returnTile(Number(button.dataset.wordSlot));
       });
     }
-    if (el.submit) el.submit.addEventListener("click", submitAnswer);
+    if (el.submit) el.submit.addEventListener("click", function () {
+      /* 跨页那一轮：答完后这颗按钮是【下一题】，点它跳下一题那一页 */
+      if (submitted && roundState.active && roundFlow) {
+        roundFlow.goNext();
+        return;
+      }
+      submitAnswer();
+    });
     if (el.reset) el.reset.addEventListener("click", resetAll);
   }
 
@@ -412,6 +437,11 @@
     cache();
     applyShellText();
     bindEvents();
+
+    /* 轮内（跨页那一轮）→ 题目从 round-content.js 取；不是轮内 → 本页自带的那道示范题 */
+    roundState = roundFlow && typeof roundFlow.init === "function" ? roundFlow.init("word-build") : { active: false };
+    QUESTION = roundState.active && roundState.question ? roundState.question : DEMO_QUESTION;
+
     startQuestion();
   }
 

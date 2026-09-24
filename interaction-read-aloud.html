@@ -25,6 +25,12 @@
     </header>
 
     <main class="page page-content">
+      <!-- 轮内多题（跨页那一轮）：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+      <div class="round-progress hidden" data-round-progress>
+        <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+        <p class="round-progress-text" data-round-text></p>
+      </div>
+
       <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
       <div class="read-aloud-stage">
         <section class="read-aloud-card" aria-labelledby="read-aloud-sr">
@@ -73,6 +79,14 @@
       </div>
 
       <p class="read-aloud-announcer" data-read-aloud-announcer role="status" aria-live="polite"></p>
+
+      <!-- 轮内多题：【下一题 / Lanjut】。轮内进场就摆着（灰、点不动），出结果才变紫可点；题型体验时整块不出现 -->
+      <div class="ra-next hidden" data-ra-next>
+        <button type="button" class="primary-button btn-stacked" data-ra-next-btn disabled>
+          <span data-ra-next-label>下一题</span>
+          <span class="btn-id" lang="id" data-ra-next-label-id>Lanjut</span>
+        </button>
+      </div>
     </main>
   </div>
 
@@ -83,6 +97,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-read-aloud.js"></script>
 </body>
 </html>

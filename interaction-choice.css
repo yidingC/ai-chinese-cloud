@@ -87,41 +87,7 @@
 }
 
 /* ---------- 进度行（一轮多题）：小点 + 第几题 ---------- */
-.choice-progress {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 0 0 12px;
-}
-
-.choice-progress-dots {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.choice-progress-dots i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #ded9f2;
-  transition: background .2s ease, transform .2s ease;
-}
-
-.choice-progress-dots i.is-done { background: var(--answer-correct); }
-
-.choice-progress-dots i.is-now {
-  background: var(--purple);
-  transform: scale(1.2);
-}
-
-.choice-progress-text {
-  margin: 0;
-  color: var(--text-subtle);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.01em;
-}
+/* 进度行已挪到 styles.css 的 .round-progress*（轮内多题四个页面共用），本页不再单独定义 */
 
 /* 换题：卡片淡入 + 上移 10px（260ms，和其它出场同一条手感） */
 .choice-card.is-enter {

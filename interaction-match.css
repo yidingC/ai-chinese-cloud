@@ -178,6 +178,21 @@
   100% { transform: scale(1); }
 }
 
+/* ---------- 轮内多题：板子下面的【下一题】 ----------
+   轮内进场就在（灰、点不动），连完 4 对才解禁；不做入场动画（常驻件） */
+.match-next {
+  margin: 18px 0 0;
+}
+
+/* 没连完＝灰、不带紫（口径与其它题型页的禁用键一致） */
+.match-next .primary-button[disabled] {
+  opacity: 1;
+  color: #a5a0bd;
+  background: #eceaf4;
+  box-shadow: 0 3px 0 #e2dfee;
+  cursor: not-allowed;
+}
+
 /* ≤360px 窄屏：主字按第一节降一档 */
 @media (max-width: 360px) {
   /* 窄屏不缩字：一行放不下就换行（块下限 66px 不动） */

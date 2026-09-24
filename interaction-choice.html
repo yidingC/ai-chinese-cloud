@@ -28,10 +28,12 @@
       <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
       <div class="choice-stage">
         <section class="choice-card" data-choice-card aria-labelledby="choice-word">
-          <!-- 一轮多题：左边三个小点（做完＝绿 / 当前＝紫 / 没做＝灰），右边第几题 -->
-          <div class="choice-progress">
-            <span class="choice-progress-dots" data-choice-progress-dots aria-hidden="true"></span>
-            <p class="choice-progress-text" data-choice-progress-text>第 1 题 / 共 3 题</p>
+          <!-- 一轮多题：左边小点（做完＝绿 / 当前＝紫 / 没做＝灰），右边第几题。
+               样式在 styles.css（.round-progress*，四个题型页共用）；
+               跨页那一轮（第 3 轮）由 shared/round-flow.js 按 URL 里的 q / total 重画。 -->
+          <div class="round-progress" data-round-progress>
+            <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+            <p class="round-progress-text" data-round-text>第 1 题 / 共 3 题</p>
           </div>
 
           <div class="choice-stem">
@@ -67,6 +69,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-choice.js"></script>
 </body>
 </html>

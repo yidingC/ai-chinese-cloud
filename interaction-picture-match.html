@@ -25,11 +25,25 @@
     </header>
 
     <main class="page page-content">
+      <!-- 轮内多题：进度行。不是轮内时整块不出现（由 shared/round-flow.js 管） -->
+      <div class="round-progress hidden" data-round-progress>
+        <span class="round-progress-dots" data-round-dots aria-hidden="true"></span>
+        <p class="round-progress-text" data-round-text></p>
+      </div>
+
       <section class="pm-card" aria-label="图片与词语配对作答区">
         <div class="match-board" data-pm-board role="group" aria-label="图片与词语配对（左列图片，右列词语）"></div>
       </section>
 
       <p class="pm-announcer" data-pm-announcer role="status" aria-live="polite"></p>
+
+      <!-- 轮内多题：【下一题 / Lanjut】。轮内进场就摆着（灰、点不动），连完 4 组才变紫可点；题型体验时整块不出现 -->
+      <div class="pm-next hidden" data-pm-next>
+        <button type="button" class="primary-button btn-stacked" data-pm-next-btn disabled>
+          <span data-pm-next-label>下一题</span>
+          <span class="btn-id" lang="id" data-pm-next-label-id>Lanjut</span>
+        </button>
+      </div>
     </main>
   </div>
 
@@ -40,6 +54,8 @@
   <script type="module" src="shared/activity-page.js"></script>
   <script type="module" src="shared/feedback-copy.js"></script>
   <script type="module" src="shared/feedback-modal.js"></script>
+  <script type="module" src="round-content.js"></script>
+  <script type="module" src="shared/round-flow.js"></script>
   <script type="module" src="interaction-picture-match.js"></script>
 </body>
 </html>
