@@ -23,30 +23,15 @@
     ]
   });
 
-  /* 关卡卡片表：题型 → 页面文件名 + 卡片右下角那张图形。
-     页面文件名跟 shared/activity-types.js 保持一致；没写 art 的题型自动用通用图形。
-     以后加题型/换插画只改这一处。 */
+  /* 关卡卡片表：题型 → 页面文件名（拼"进这一轮"的链接用）。
+     页面文件名跟 shared/activity-types.js 保持一致；以后加题型只改这一处。
+     卡面不再画图形（原来的 art 字段已删）。 */
   const LEVEL_CARDS = {
-    choice: {
-      page: "interaction-choice.html",
-      art: `<rect x="18" y="30" width="84" height="24" rx="12" fill="none" stroke="currentColor" stroke-width="9"/><rect x="18" y="66" width="84" height="24" rx="12" fill="currentColor"/>`
-    },
-    picture: {
-      page: "interaction-picture.html",
-      art: `<rect x="22" y="28" width="76" height="62" rx="14" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="76" cy="50" r="8" fill="currentColor"/><path d="M34 82l16-18 11 12 9-8 14 14" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`
-    },
-    match: {
-      page: "match.html",
-      art: `<circle cx="34" cy="34" r="13" fill="currentColor"/><path d="M45 45c13 2 23 12 30 30" stroke="currentColor" stroke-width="11" stroke-linecap="round" fill="none"/><circle cx="86" cy="86" r="13" fill="currentColor"/>`
-    },
-    listening: {
-      page: "interaction-listening.html",
-      art: `<path d="M30 52v16l20 12V40z" fill="currentColor"/><path d="M64 46a20 20 0 0 1 0 28" stroke="currentColor" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M80 34a36 36 0 0 1 0 52" stroke="currentColor" stroke-width="9" stroke-linecap="round" fill="none"/>`
-    },
-    fill: {
-      page: "interaction-fill.html",
-      art: `<rect x="18" y="30" width="84" height="24" rx="12" fill="currentColor"/><rect x="18" y="66" width="34" height="24" rx="12" fill="currentColor"/><rect x="62" y="66" width="40" height="24" rx="12" fill="none" stroke="currentColor" stroke-width="9" stroke-dasharray="10 9"/>`
-    },
+    choice: { page: "interaction-choice.html" },
+    picture: { page: "interaction-picture.html" },
+    match: { page: "match.html" },
+    listening: { page: "interaction-listening.html" },
+    fill: { page: "interaction-fill.html" },
     order: { page: "interaction-order.html" },
     poll: { page: "interaction-poll.html" },
     memory: { page: "memory.html" },
@@ -61,7 +46,6 @@
     "picture-talk": { page: "interaction-picture-talk.html" },
     "open-qa": { page: "interaction-open-qa.html" }
   };
-  const GENERIC_CARD_ART = `<circle cx="60" cy="60" r="34" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="60" cy="60" r="10" fill="currentColor"/>`;
 
   const cardPage = (type) => {
     const card = LEVEL_CARDS[type];
@@ -69,7 +53,6 @@
     const meta = activityTypes && typeof activityTypes.get === "function" ? activityTypes.get(type) : null;
     return (meta && meta.page) || `interaction-${type}.html`;
   };
-  const cardArt = (type) => (LEVEL_CARDS[type] && LEVEL_CARDS[type].art) || GENERIC_CARD_ART;
 
   /* 关卡链接：自动拼上题型、课堂模式和第几关（1、2、3…），这样做完才记得上账 */
   const levelHref = (type, slot) => `${cardPage(type)}?type=${encodeURIComponent(type)}&mode=class&slot=${slot}`;
@@ -82,16 +65,12 @@
       .filter((level) => level && typeof level === "object" && typeof level.type === "string" && level.type.trim())
       .map((level, index) => {
         const type = level.type.trim();
-        const meta = activityTypes && typeof activityTypes.get === "function" ? activityTypes.get(type) : null;
         return {
           type: type,
           tone: COURSE_TONES.indexOf(level.tone) >= 0 ? level.tone : COURSE_TONES[index % COURSE_TONES.length],
-          title: typeof level.title === "string" && level.title.trim()
-            ? level.title.trim()
-            : (meta ? meta.cardTitle || meta.title : type),
-          subtitle: typeof level.subtitle === "string"
-            ? level.subtitle.trim()
-            : (meta ? meta.titleId : "")
+          /* 这两行是"这一轮练什么"（轮次主题，老师/教研填）：空着就空着，绝不退回题型名 */
+          title: typeof level.title === "string" ? level.title.trim() : "",
+          subtitle: typeof level.subtitle === "string" ? level.subtitle.trim() : ""
         };
       });
     if (!levels.length) return DEFAULT_COURSE;
@@ -99,6 +78,7 @@
     const pointsPerLevel = Number(source.pointsPerLevel);
     return {
       lesson: {
+        no: Number(lesson.no) > 0 ? Math.round(Number(lesson.no)) : 0,
         title: typeof lesson.title === "string" && lesson.title.trim() ? lesson.title.trim() : DEFAULT_COURSE.lesson.title,
         subtitle: typeof lesson.subtitle === "string" ? lesson.subtitle.trim() : DEFAULT_COURSE.lesson.subtitle
       },
@@ -549,6 +529,17 @@
     const renderCourseShell = () => {
       const lessonNode = document.querySelector(".cls-strip-lesson");
       if (lessonNode) lessonNode.textContent = COURSE.lesson.title;
+      /* 「第几课」小胶囊：数字来自数据 lesson.no（以后上第二课只改数据，页面里不写死） */
+      const chipNode = document.querySelector("[data-lesson-chip]");
+      if (chipNode) {
+        const lessonNo = Number(COURSE.lesson && COURSE.lesson.no);
+        if (Number.isFinite(lessonNo) && lessonNo > 0) {
+          chipNode.textContent = `LESSON ${lessonNo}`;
+          chipNode.hidden = false;
+        } else {
+          chipNode.hidden = true;
+        }
+      }
       /* 印尼语副标题先挂在属性上留档（状态条按口径只有中文），以后要上屏从这里取 */
       if (strip) strip.dataset.lessonId = COURSE.lesson.subtitle;
 
@@ -559,22 +550,24 @@
       if (!board) return;
       board.innerHTML = COURSE.levels.map((level, index) => {
         const slot = index + 1;
+        /* 卡片上这两行是"这一轮练什么"（轮次主题，不是题型名）；哪一行空着就整行不渲染 */
+        const themeLine = level.title ? `<span class="cls-level-title">${escapeText(level.title)}</span>` : "";
+        const themeSubLine = level.subtitle ? `<span class="cls-level-id">${escapeText(level.subtitle)}</span>` : "";
         const card = `
       <div class="cls-level-row" data-level-row="${slot}">
-      <button type="button" class="cls-level" data-tone="${level.tone}" data-level="${slot}" data-state="locked">
+      <button type="button" class="cls-level" data-tone="${level.tone}" data-level="${slot}" data-state="todo">
         <span class="cls-level-badge" data-badge>${slot}</span>
         <span class="cls-level-copy">
-          <span class="cls-level-title">${escapeText(level.title)}</span>
-          <span class="cls-level-id">${escapeText(level.subtitle)}</span>
+          ${themeLine}
+          ${themeSubLine}
           <span class="cls-class-count" data-level-count hidden>
             ${PEOPLE_ICON}
             <b data-count-num>0</b><span class="cls-count-total">/${CLASSROOM_TOTAL}</span>
           </span>
         </span>
-        <span class="cls-level-action is-lock" data-action aria-hidden="true">${LOCK_ICON}</span>
-        <svg class="cls-level-art" viewBox="0 0 120 120" aria-hidden="true">${cardArt(level.type)}</svg>
+        <span class="cls-level-action is-play" data-action aria-hidden="true">${PLAY_ICON}</span>
       </button>
-      <button type="button" class="cls-level-board" data-board-open="${slot}" aria-label="看第 ${slot} 关的速度榜">
+      <button type="button" class="cls-level-board" data-board-open="${slot}" aria-label="看第 ${slot} 轮的速度榜">
         <span class="cls-level-board-icon" data-board-icon aria-hidden="true">⚡</span>
       </button>
       </div>`;
@@ -616,15 +609,6 @@
 
     /* 已完成的关卡号（只算这份课程里的，关掉课程外的旧记录不影响计分） */
     const doneSlots = () => completedSlotsOf(appState).filter((slot) => slot <= LEVEL_COUNT);
-
-    /* 上一关都做完了才解锁这一关 */
-    const unlockedBefore = (index) => {
-      const done = doneSlots();
-      for (let slot = 1; slot < index; slot += 1) {
-        if (!done.includes(slot)) return false;
-      }
-      return true;
-    };
 
     /* ---- 演示用：虚构的班级。只用来算名次和卡片人数，界面上不出现"模拟"字样。
        正式接后台后只改 myScore / myRank 这两个函数 ---- */
@@ -870,7 +854,7 @@
 
       levels.forEach((level) => {
         const finished = done.includes(level.index);
-        const canPlay = open && unlockedBefore(level.index);
+        const canPlay = open;
         const state = finished ? "done" : canPlay ? "todo" : "locked";
         level.node.dataset.state = state;
         if (level.badge) level.badge.innerHTML = finished ? CHECK_ICON : String(level.index);
@@ -918,10 +902,6 @@
       level.node.addEventListener("click", () => {
         if (!phase().open) {
           showToast(appState.phase === "before" ? "请在开课后进入互动" : "互动入口已关闭");
-          return;
-        }
-        if (!unlockedBefore(level.index)) {
-          showToast(`先完成第 ${level.index - 1} 关，才能解锁这一关`);
           return;
         }
         window.location.href = level.href;
@@ -1164,7 +1144,7 @@
           speedTimes: {}
         });
         replayRank();
-        showToast("三关互动进度已重置");
+        showToast("互动进度已重置");
       });
     }
 

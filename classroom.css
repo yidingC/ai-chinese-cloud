@@ -7,6 +7,8 @@
 /* ---- 两行状态条：上行 熊猫 + 课节名 + 星星，下行 实时名次 ---- */
 .cls-strip {
   display: grid;
+  /* 轨道按在内容区里：不然「LESSON N」胶囊进来后整行会被内容撑宽，窄屏上星星被顶出紫条 */
+  grid-template-columns: minmax(0, 1fr);
   gap: 5px;
   padding: 9px 16px 11px 10px;
   border-radius: 20px;
@@ -133,6 +135,7 @@
 
 .cls-guide {
   display: grid;
+  flex: none;
   width: 30px;
   height: 30px;
   place-items: center;
@@ -150,6 +153,27 @@
   box-shadow: 0 0 0 4px rgba(31, 191, 143, 0.14);
 }
 
+/* 「第几课」小胶囊：内容来自课程数据 lesson.no（没填就整粒不显示） */
+.cls-lesson-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cls-lesson-chip[hidden] {
+  display: none;
+}
+
 .cls-strip-lesson {
   overflow: hidden;
   font-size: 17px;
@@ -157,6 +181,9 @@
   color: #ffffff;
   white-space: nowrap;
   text-overflow: ellipsis;
+  /* 挤的时候先收课名（它本来就有省略号），别把三颗星顶出紫条 */
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .cls-class-count {
@@ -208,6 +235,7 @@
 
 .cls-stars {
   display: inline-flex;
+  flex: none;
   gap: 4px;
   margin-left: auto;
 }
@@ -404,27 +432,6 @@
 .cls-level-action.is-lock svg {
   width: 37px;
   height: 37px;
-}
-
-.cls-level-art {
-  position: absolute;
-  right: -14px;
-  bottom: -22px;
-  width: 132px;
-  height: 132px;
-  color: #ffffff;
-  opacity: 0.22;
-  transform: rotate(-8deg) translateY(0);
-  transform-origin: 60% 60%;
-  pointer-events: none;
-  animation: clsFloat 4.4s ease-in-out infinite;
-}
-
-.cls-level[data-level="2"] .cls-level-art { animation-delay: -2.2s; }
-
-@keyframes clsFloat {
-  0%, 100% { transform: rotate(-9deg) translateY(0); }
-  50% { transform: rotate(-2deg) translateY(-18px); }
 }
 
 .cls-level[data-state="done"] .cls-level-badge {
@@ -674,4 +681,14 @@
 .cls-link svg {
   width: 78px;
   height: 58px;
+}
+
+/* ---- 窄屏（≤340px）：状态条缩骨，保证三颗星留在紫条里 ---- */
+@media (max-width: 340px) {
+  .cls-strip { padding-right: 12px; }
+  .cls-strip-top { gap: 8px; }
+  .cls-guide { width: 26px; height: 26px; font-size: 16px; }
+  .cls-lesson-chip { padding: 0 6px; font-size: 9.5px; }
+  .cls-stars { gap: 3px; }
+  .cls-star { width: 20px; height: 20px; }
 }
