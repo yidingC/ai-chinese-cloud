@@ -28,6 +28,12 @@
       <!-- 卡片 + 回执条：回执条是卡片的下一层，平时整条压在卡片下沿后面，出结果才滑出来 -->
       <div class="choice-stage">
         <section class="choice-card" data-choice-card aria-labelledby="choice-word">
+          <!-- 一轮多题：左边三个小点（做完＝绿 / 当前＝紫 / 没做＝灰），右边第几题 -->
+          <div class="choice-progress">
+            <span class="choice-progress-dots" data-choice-progress-dots aria-hidden="true"></span>
+            <p class="choice-progress-text" data-choice-progress-text>第 1 题 / 共 3 题</p>
+          </div>
+
           <div class="choice-stem">
             <p class="choice-pinyin" data-choice-pinyin>Yì bēi chá</p>
             <h3 class="choice-question" id="choice-word" data-choice-word>一杯茶</h3>

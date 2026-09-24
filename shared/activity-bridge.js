@@ -44,6 +44,9 @@
   function recordResult(result) {
     const state = read();
     const slot = Number(result && result.slot) || 0;
+    /* 同一个 slot 再写（"再做一次"）：保留第一次的用时和完成时刻——速度榜只认第一次，
+       其余字段（对错、明细）用这一次的。第一次没记到用时（＝0）时，才用这一次的补上。 */
+    const previous = state.results.filter(function (item) { return item.slot === slot; })[0] || null;
     const entry = {
       slot: slot,
       type: (result && result.type) || "",
@@ -52,6 +55,11 @@
       detail: (result && result.detail) || "",
       completedAt: new Date().toISOString()
     };
+    if (previous) {
+      const firstSeconds = Number(previous.seconds);
+      if (Number.isFinite(firstSeconds) && firstSeconds > 0) entry.seconds = firstSeconds;
+      if (previous.completedAt) entry.completedAt = previous.completedAt;
+    }
     const results = state.results
       .filter(function (item) { return item.slot !== slot; })
       .concat(entry)

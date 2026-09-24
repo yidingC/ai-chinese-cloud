@@ -1,23 +1,49 @@
-/* 快速选择 · 看词选大图 —— 页面脚本（点图选中，提交后判分）
-   题干给一个词 + 拼音，四个大图里点一张选中（紫），点【提交答案】才判分；提交前可以改选。
-   页面给事实（对错 + 正确图的意思），弹窗给情绪（句池来自 shared/feedback-copy.js）。 */
+/* 快速选择 · 看词选大图 —— 页面脚本（一轮多题：点图选中 → 提交判分 → 下一题 → 轮末弹窗）
+   题干给一个词 + 拼音，四个大图里点一张选中（紫），点【提交 / Kirim】才判分；提交前可以改选。
+   一轮 = 一组题：中间题答完按钮变【下一题 / Lanjut】，最后一题答完才记账（整轮用时 + 整轮有没有错），
+   1.4 秒后出完成弹窗。页面给事实（对错 + 正确图的意思），弹窗给情绪（句池来自 shared/feedback-copy.js）。 */
 (function (global) {
   "use strict";
 
   const MODAL_DELAY = 1400;          // 结果条先出场，弹窗后到
 
-  // 示范题：题干是「能被图清楚表达的具象名词」；选项只有图和印尼语意思，不放中文字
-  const QUESTION = {
-    id: "choice-drink-1",
-    word: "一杯茶",
-    pinyin: "Yì bēi chá",
-    options: [
-      { emoji: "🍚", word: "一碗米饭", translate: "Semangkuk nasi" },
-      { emoji: "👕", word: "一件衣服", translate: "Sebuah baju" },
-      { emoji: "📚", word: "一本书", translate: "Sebuah buku" },
-      { emoji: "🍵", word: "一杯茶", translate: "Secangkir teh", correct: true }
-    ]
-  };
+  /* 一轮的题：题干是「能被图清楚表达的具象名词」；选项只有图和印尼语意思（挂在 aria-label），不放中文字。
+     内容以后由后台给，这里先写死三道示范题（每题 4 个图形选项、只有 1 个 correct）。 */
+  const QUESTIONS = [
+    {
+      id: "choice-drink-1",
+      word: "一杯茶",
+      pinyin: "Yì bēi chá",
+      options: [
+        { emoji: "🍚", word: "一碗米饭", translate: "Semangkuk nasi" },
+        { emoji: "👕", word: "一件衣服", translate: "Sebuah baju" },
+        { emoji: "📚", word: "一本书", translate: "Sebuah buku" },
+        { emoji: "🍵", word: "一杯茶", translate: "Secangkir teh", correct: true }
+      ]
+    },
+    {
+      id: "choice-book-2",
+      word: "一本书",
+      pinyin: "Yì běn shū",
+      options: [
+        { emoji: "🍵", word: "一杯茶", translate: "Secangkir teh" },
+        { emoji: "📚", word: "一本书", translate: "Sebuah buku", correct: true },
+        { emoji: "🍚", word: "一碗米饭", translate: "Semangkuk nasi" },
+        { emoji: "👕", word: "一件衣服", translate: "Sebuah baju" }
+      ]
+    },
+    {
+      id: "choice-clothes-3",
+      word: "一件衣服",
+      pinyin: "Yí jiàn yī fu",
+      options: [
+        { emoji: "📚", word: "一本书", translate: "Sebuah buku" },
+        { emoji: "👕", word: "一件衣服", translate: "Sebuah baju", correct: true },
+        { emoji: "🍚", word: "一碗米饭", translate: "Semangkuk nasi" },
+        { emoji: "🍵", word: "一杯茶", translate: "Secangkir teh" }
+      ]
+    }
+  ];
 
   const el = {};
   const modal = global.AICloudFeedbackModal || null;
@@ -25,13 +51,14 @@
 
   let tiles = [];
   let selectedId = "";
-  let submitted = false;
-  let finished = false;
-  let attempts = 0; // 判分次数：第 1 次就对 = 一次全对
-  let lastCorrect = false;
-  let lastSeconds = 0;
-  let startedAt = 0;
+  let index = 0;              // 第几题（0 起）
+  let submitted = false;      // 本题已判分
+  let missedInRound = false;  // 整轮有没有答错过（决定轮末弹窗走哪档句池）
+  let recorded = false;       // 整轮有没有记过账（只在最后一题记一次）
+  let roundStartedAt = 0;     // 整轮计时：进第 1 题那刻开始
   let modalTimer = 0;
+
+  const isLastQuestion = () => index >= QUESTIONS.length - 1;
 
   function setText(node, text) {
     if (node) node.textContent = text;
@@ -53,9 +80,12 @@
   }
 
   function cache() {
+    el.card = document.querySelector("[data-choice-card]");
     el.word = document.querySelector("[data-choice-word]");
     el.pinyin = document.querySelector("[data-choice-pinyin]");
     el.options = document.querySelector("[data-choice-options]");
+    el.progressDots = document.querySelector("[data-choice-progress-dots]");
+    el.progressText = document.querySelector("[data-choice-progress-text]");
     el.submit = document.querySelector("[data-choice-submit]");
     el.submitLabel = document.querySelector("[data-choice-submit-label]");
     el.submitLabelId = document.querySelector("[data-choice-submit-label-id]");
@@ -103,11 +133,39 @@
     setHidden(el.feedbackAnswer, true);
   }
 
-  function resetSubmit() {
+  /* 按钮三态（一页里循环）：没选＝灰【提交】、选了＝紫【提交】、
+     答完中间题＝紫【下一题】、最后一题答完＝灰【已提交】 */
+  function paintSubmit() {
     if (!el.submit) return;
-    el.submit.disabled = true;
-    setText(el.submitLabel, "提交");
-    setText(el.submitLabelId, "Kirim");
+    if (!submitted) {
+      el.submit.disabled = !selectedId;
+      setText(el.submitLabel, "提交");
+      setText(el.submitLabelId, "Kirim");
+      return;
+    }
+    const last = isLastQuestion();
+    el.submit.disabled = last;
+    setText(el.submitLabel, last ? "已提交" : "下一题");
+    setText(el.submitLabelId, last ? "Terkirim" : "Lanjut");
+  }
+
+  /* 进度行：做完＝绿、当前＝紫、没做＝灰；右边第几题 */
+  function renderProgress() {
+    setText(el.progressText, "第 " + (index + 1) + " 题 / 共 " + QUESTIONS.length + " 题");
+    if (!el.progressDots) return;
+    Array.prototype.forEach.call(el.progressDots.children, function (dot, i) {
+      const done = i < index || (i === index && submitted);
+      dot.classList.toggle("is-done", done);
+      dot.classList.toggle("is-now", i === index && !done);
+    });
+  }
+
+  function buildProgressDots() {
+    if (!el.progressDots) return;
+    el.progressDots.innerHTML = "";
+    for (let i = 0; i < QUESTIONS.length; i += 1) {
+      el.progressDots.appendChild(document.createElement("i"));
+    }
   }
 
   /* 选中态：紫描边 + 硬底；提交按钮跟着选中亮起来 */
@@ -119,15 +177,15 @@
       button.classList.toggle("selected", isSelected);
       button.setAttribute("aria-pressed", isSelected ? "true" : "false");
     });
-    if (el.submit && !submitted) el.submit.disabled = !selectedId;
+    paintSubmit();
   }
 
-  function renderOptions() {
+  function renderOptions(question) {
     if (!el.options) return;
     el.options.innerHTML = "";
-    tiles = shuffle(QUESTION.options).map(function (option, index) {
+    tiles = shuffle(question.options).map(function (option, i) {
       return {
-        id: "choice-" + index,
+        id: "choice-" + i,
         emoji: option.emoji,
         word: option.word,
         translate: option.translate,
@@ -156,43 +214,54 @@
     });
   }
 
-  function startQuestion() {
-    global.clearTimeout(modalTimer);
-    closeModal();
+  /* 渲染第 index 题：题干、选项、进度、按钮都按"本题还没答"重置 */
+  function renderQuestion(animate) {
+    const question = QUESTIONS[index] || QUESTIONS[0];
     selectedId = "";
     submitted = false;
-    finished = false;
-    attempts = 0;
-    lastCorrect = false;
-    startedAt = Date.now();
 
-    setText(el.pinyin, QUESTION.pinyin || "");
-    setHidden(el.pinyin, !QUESTION.pinyin);
-    setText(el.word, QUESTION.word);
+    setText(el.pinyin, question.pinyin || "");
+    setHidden(el.pinyin, !question.pinyin);
+    setText(el.word, question.word);
 
-    renderOptions();
+    renderOptions(question);
     resetFeedback();
-    resetSubmit();
+    renderProgress();
+    paintSubmit();
+
+    if (animate && el.card) {
+      /* 换场：卡片淡入 + 上移 10px；先把类摘掉、读一次布局，动画才会重播 */
+      el.card.classList.remove("is-enter");
+      void el.card.offsetWidth;
+      el.card.classList.add("is-enter");
+    }
   }
 
-  /* 再练一次：清空作答、回到本题初始状态（选项不重排） */
-  function restartQuestion() {
+  /* 答完中间题：进下一题——回执收起、选中和判分样式清空、按钮回"没选灰"、进度 +1 */
+  function nextQuestion() {
+    if (!submitted || isLastQuestion()) return;
+    index += 1;
+    renderQuestion(true);
+    scrollTopIfNeeded();
+  }
+
+  /* 再练一次 = 整轮重做：回第 1 题、重新计时 */
+  function restartRound() {
     global.clearTimeout(modalTimer);
     closeModal();
-    selectedId = "";
-    submitted = false;
-    finished = false;
-    lastCorrect = false;
-    startedAt = Date.now();
-    tiles.forEach(function (tile) {
-      const button = tileNode(tile.id);
-      if (!button) return;
-      button.disabled = false;
-      button.classList.remove("selected", "correct", "wrong");
-      button.setAttribute("aria-pressed", "false");
-    });
-    resetFeedback();
-    resetSubmit();
+    index = 0;
+    missedInRound = false;
+    recorded = false;
+    roundStartedAt = Date.now();
+    renderQuestion(false);
+    scrollTopIfNeeded();
+  }
+
+  /* 矮屏上回执条把页面顶下去过一段，换题时轻轻回到顶 */
+  function scrollTopIfNeeded() {
+    if (typeof global.scrollTo === "function" && global.scrollY > 0) {
+      global.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }
 
   /* 点图 = 选中 / 换选 / 再点一下取消；真正的判分在【提交答案】 */
@@ -216,11 +285,16 @@
   }
 
   function completeOnce() {
-    if (finished) return null;
-    finished = true;
+    if (recorded) return null;
+    recorded = true;
     const bridge = activityBridge();
     if (!bridge || typeof bridge.finish !== "function") return { recorded: false, next: "" };
-    return bridge.finish({ correct: lastCorrect, seconds: lastSeconds });
+    return bridge.finish({ correct: !missedInRound, seconds: roundSeconds() });
+  }
+
+  /* 整轮用时：进第 1 题那刻开始，最后一题结算 */
+  function roundSeconds() {
+    return Math.max(1, Math.round((Date.now() - roundStartedAt) / 1000));
   }
 
   function openModal(tier, praise) {
@@ -237,7 +311,7 @@
             if (global.location) global.location.href = "classroom.html";
           }
         },
-        { label: "再练一次", icon: "↻", onSelect: restartQuestion }
+        { label: "再练一次", icon: "↻", onSelect: restartRound }
       ]
     });
   }
@@ -257,14 +331,8 @@
     if (!chosen || !correctTile) return;
 
     submitted = true;
-    attempts += 1;
-    lastSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-
     const isCorrect = chosen.id === correctTile.id;
-    const firstTry = isCorrect && attempts === 1;
-    const tier = isCorrect ? (firstTry ? "correctFirstTry" : "correct") : "wrong";
-    const praise = typeof copy.draw === "function" ? copy.draw(tier, { single: true }) : null;
-    lastCorrect = isCorrect;
+    if (!isCorrect) missedInRound = true;
 
     // 判分时收起选中态，只留对错；之后不能再改
     tiles.forEach(function (tile) {
@@ -277,13 +345,9 @@
       else if (tile.id === chosen.id) button.classList.add("wrong");
     });
 
-    if (el.submit) {
-      el.submit.disabled = true;
-      setText(el.submitLabel, "已提交");
-      setText(el.submitLabelId, "Terkirim");
-    }
-
     showFeedback(isCorrect, correctTile);
+    renderProgress();   /* 本题的点变绿 */
+    paintSubmit();      /* 中间题 →【下一题】；最后一题 →【已提交】 */
     if (el.feedback && typeof el.feedback.scrollIntoView === "function") {
       /* 一屏放得下时不动页面；回执条被屏幕下沿裁掉才滚最小距离（跟其他页同一条退路） */
       el.feedback.scrollIntoView({ block: "nearest" });
@@ -291,7 +355,13 @@
       global.setTimeout(revealReceipt, 300);
     }
 
-    completeOnce(); /* 课堂模式记进度；完成弹窗两种模式都走，跳转由弹窗按钮负责 */
+    /* 中间题：不记账、不弹窗，等学生点【下一题】 */
+    if (!isLastQuestion()) return;
+
+    /* 最后一题：整轮结算——只在这一次记账（整轮用时 + 整轮有没有错），1.4 秒后出完成弹窗 */
+    completeOnce();
+    const tier = missedInRound ? "correct" : "correctFirstTry";
+    const praise = typeof copy.draw === "function" ? copy.draw(tier, { single: true }) : null;
 
     modalTimer = global.setTimeout(function () {
       openModal(tier, praise);
@@ -299,14 +369,21 @@
   }
 
   function bindEvents() {
-    if (el.submit) el.submit.addEventListener("click", submit);
+    if (!el.submit) return;
+    /* 一颗按钮走完一轮：没答＝提交；中间题答完＝下一题；最后一题答完＝禁用 */
+    el.submit.addEventListener("click", function () {
+      if (submitted) nextQuestion();
+      else submit();
+    });
   }
 
   function boot() {
     cache();
     applyShellText();
+    buildProgressDots();
     bindEvents();
-    startQuestion();
+    roundStartedAt = Date.now();
+    renderQuestion(false);
   }
 
   if (document.readyState === "loading") {

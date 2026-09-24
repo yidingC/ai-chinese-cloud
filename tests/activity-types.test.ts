@@ -90,4 +90,16 @@ describe("student activity library", () => {
     expect(afterSecond.results[1].correct).toBe(false);
     expect(bridge.slotResult(2).type).toBe("memory");
   });
+
+  it("keeps the first time when the same slot is played again", () => {
+    bridge.write({ task1Done: false, task2Done: false, results: [] });
+    bridge.recordResult({ slot: 1, type: "choice", correct: false, seconds: 9 });
+    const first = bridge.slotResult(1);
+    bridge.recordResult({ slot: 1, type: "choice", correct: true, seconds: 21 });
+    const redone = bridge.slotResult(1);
+    expect(redone.seconds).toBe(9);                    // 速度榜只认第一次的用时
+    expect(redone.completedAt).toBe(first.completedAt);
+    expect(redone.correct).toBe(true);                 // 其余字段用这次的
+    expect(bridge.read().results).toHaveLength(1);
+  });
 });
