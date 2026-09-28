@@ -326,7 +326,8 @@
             if (global.location) global.location.href = "classroom.html";
           }
         },
-        { label: "再练一次", icon: "↻", onSelect: restartRound }
+        /* 课堂模式＝整轮重做，跟第 3 轮整轮弹窗同一口径；题型体验仍是「再练一次」 */
+        { label: mode() === "class" ? "再做一次" : "再练一次", icon: "↻", subLabel: "Coba lagi", onSelect: restartRound }
       ]
     });
   }
