@@ -18,7 +18,6 @@
     const ctx = bridge && bridge.context ? bridge.context() : { mode: "solo", slot: 0, type: type };
 
     setText(document.querySelector("[data-activity-title]"), meta ? meta.title : "题型页面");
-    setText(document.querySelector("[data-activity-subtitle]"), meta ? meta.titleId : "Aktivitas");
 
     const back = document.querySelector("[data-activity-back]");
     if (back) {

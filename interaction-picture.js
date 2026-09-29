@@ -22,7 +22,7 @@
     image: "",
     imageAlt: "一只猫",
     prompt: "这是什么？",
-    promptPinyin: "Zhè shì shénme?",
+    promptId: "Ini apa?",
     options: [
       { id: "cat", text: "猫", pinyin: "māo", translate: "Kucing", correct: true },
       { id: "dog", text: "狗", pinyin: "gǒu", translate: "Anjing" },
@@ -70,8 +70,8 @@
 
   function cache() {
     el.slot = document.querySelector("[data-picture-slot]");
-    el.pinyin = document.querySelector("[data-picture-pinyin]");
     el.stem = document.querySelector("[data-picture-question]");
+    el.questionId = document.querySelector("[data-picture-question-id]");
     el.options = document.querySelector("[data-picture-options]");
     el.submit = document.querySelector("[data-picture-submit]");
     el.submitLabel = document.querySelector("[data-picture-submit-label]");
@@ -159,12 +159,19 @@
       letter.setAttribute("aria-hidden", "true");
       letter.textContent = option.letter;
 
-      const text = document.createElement("span");
-      text.className = "picture-option-text";
-      text.textContent = option.text;
+      const body = document.createElement("span");
+      body.className = "picture-option-body";
+      const zh = document.createElement("strong");
+      zh.className = "picture-option-text";
+      zh.textContent = option.text;
+      const pinyin = document.createElement("small");
+      pinyin.className = "picture-option-pinyin";
+      pinyin.textContent = option.pinyin || "";
+      body.appendChild(zh);
+      body.appendChild(pinyin);
 
       button.appendChild(letter);
-      button.appendChild(text);
+      button.appendChild(body);
       button.addEventListener("click", function () {
         selectOption(option.id);
       });
@@ -329,8 +336,8 @@
       };
     });
 
-    setText(el.pinyin, QUESTION.promptPinyin || "");
-    setHidden(el.pinyin, !QUESTION.promptPinyin);
+    setText(el.questionId, QUESTION.promptId || "");
+    setHidden(el.questionId, !QUESTION.promptId);
     setText(el.stem, QUESTION.prompt);
 
     resetPictureMove();

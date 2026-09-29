@@ -1,5 +1,7 @@
 /* 快速选择 · 看词选大图 —— 页面脚本（两种轮：本页三道题 / 跨页混题型一轮里的这一道）
    题干给一个词 + 拼音，四个大图里点一张选中（紫），点【提交 / Kirim】才判分；提交前可以改选。
+   第 3 题是"读题选词"的文字选项版样板（optionStyle: "text"）：题干是问句，选项是四行竖排的文字行
+   （行首字母 + 汉字 + 拼音；字母块照情景选择页搬）。
    页面给事实（对错 + 正确图的意思），弹窗给情绪（句池来自 shared/feedback-copy.js）。
 
    轮外（第 1 轮、题型体验）：本页自带三道示范题，页内换题——中间题答完按钮变【下一题 / Lanjut】，
@@ -10,9 +12,12 @@
   "use strict";
 
   const MODAL_DELAY = 1400;          // 结果条先出场，弹窗后到
+  const LETTERS = ["A", "B", "C", "D", "E", "F"];   // 文字选项的行首字母（照情景选择页）
 
-  /* 本页自带的示范题（第 1 轮 / 题型体验用）：题干是「能被图清楚表达的具象名词」；
-     选项只有图和印尼语意思（挂在 aria-label），不放中文字。
+  /* 本页自带的示范题（第 1 轮 / 题型体验用）：
+     前两题是看图版——题干是「能被图清楚表达的具象名词」，选项只有图和印尼语意思（挂在 aria-label），不放中文字；
+     第 3 题是文字选项版样板——题干是问句（prompt + promptId），选项是「汉字 + 拼音」。
+     optionStyle 不写默认走图片版（老数据不用改）。
      内容以后由后台给；跨页那一轮的题在 round-content.js 里。 */
   const DEMO_QUESTIONS = [
     {
@@ -38,14 +43,15 @@
       ]
     },
     {
-      id: "choice-clothes-3",
-      word: "一件衣服",
-      pinyin: "Yí jiàn yī fu",
+      id: "choice-drink-3",
+      prompt: "哪一个是喝的？",
+      promptId: "Mana yang minuman?",
+      optionStyle: "text",
       options: [
-        { emoji: "📚", word: "一本书", translate: "Sebuah buku" },
-        { emoji: "👕", word: "一件衣服", translate: "Sebuah baju", correct: true },
-        { emoji: "🍚", word: "一碗米饭", translate: "Semangkuk nasi" },
-        { emoji: "🍵", word: "一杯茶", translate: "Secangkir teh" }
+        { text: "一杯茶", pinyin: "Yì bēi chá", translate: "Secangkir teh", correct: true },
+        { text: "一本书", pinyin: "Yì běn shū", translate: "Sebuah buku" },
+        { text: "一件衣服", pinyin: "Yí jiàn yī fu", translate: "Sebuah baju" },
+        { text: "一碗米饭", pinyin: "Yì wǎn mǐfàn", translate: "Semangkuk nasi" }
       ]
     }
   ];
@@ -198,35 +204,75 @@
   function renderOptions(question) {
     if (!el.options) return;
     el.options.innerHTML = "";
+    const textStyle = question.optionStyle === "text";
+    el.options.classList.toggle("is-text-list", textStyle);
     tiles = shuffle(question.options).map(function (option, i) {
       return {
         id: "choice-" + i,
         emoji: option.emoji,
-        word: option.word,
+        text: option.text,
+        pinyin: option.pinyin,
+        word: option.word || option.text,
         translate: option.translate,
         correct: option.correct === true
       };
     });
-    tiles.forEach(function (tile) {
+    tiles.forEach(function (tile, i) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "choice-tile";
+      button.className = textStyle ? "choice-tile is-text" : "choice-tile";
       button.dataset.choiceId = tile.id;
       button.dataset.word = tile.word;
-      button.setAttribute("aria-label", tile.translate);
       button.setAttribute("aria-pressed", "false");
 
-      const emoji = document.createElement("span");
-      emoji.className = "choice-emoji";
-      emoji.setAttribute("aria-hidden", "true");
-      emoji.textContent = tile.emoji;
+      if (textStyle) {
+        /* 文字选题：一行一个、四行竖排；行内＝字母（照情景选择页）+「汉字 + 拼音」整块左对齐。
+           读屏只念「选项：汉字 拼音」（印尼语是图版的补偿） */
+        button.setAttribute("aria-label", "选项：" + tile.text + " " + tile.pinyin);
+        const letter = document.createElement("span");
+        letter.className = "choice-tile-letter";
+        letter.setAttribute("aria-hidden", "true");
+        letter.textContent = LETTERS[i] || "?";
+        const body = document.createElement("span");
+        body.className = "choice-tile-body";
+        const text = document.createElement("span");
+        text.className = "choice-tile-text";
+        text.textContent = tile.text;
+        const pinyin = document.createElement("span");
+        pinyin.className = "choice-tile-pinyin";
+        pinyin.textContent = tile.pinyin;
+        body.appendChild(text);
+        body.appendChild(pinyin);
+        button.appendChild(letter);
+        button.appendChild(body);
+      } else {
+        button.setAttribute("aria-label", tile.translate);
+        const emoji = document.createElement("span");
+        emoji.className = "choice-emoji";
+        emoji.setAttribute("aria-hidden", "true");
+        emoji.textContent = tile.emoji;
+        button.appendChild(emoji);
+      }
 
-      button.appendChild(emoji);
       button.addEventListener("click", function () {
         selectTile(tile.id);
       });
       el.options.appendChild(button);
     });
+  }
+
+  /* 题干两种：图片题＝「词 + 拼音」；文字题＝「问句 + 印尼语小字」（不注音，小字行换成印尼语） */
+  function renderStem(question) {
+    const textStyle = question.optionStyle === "text";
+    setText(el.word, (textStyle ? question.prompt : question.word) || "");
+    const sub = textStyle ? question.promptId : question.pinyin;
+    setText(el.pinyin, sub || "");
+    setHidden(el.pinyin, !sub);
+    if (el.pinyin) {
+      el.pinyin.classList.toggle("is-id", textStyle);
+      if (textStyle) el.pinyin.setAttribute("lang", "id");
+      else el.pinyin.removeAttribute("lang");
+    }
   }
 
   /* 渲染第 index 题：题干、选项、进度、按钮都按"本题还没答"重置 */
@@ -235,9 +281,7 @@
     selectedId = "";
     submitted = false;
 
-    setText(el.pinyin, question.pinyin || "");
-    setHidden(el.pinyin, !question.pinyin);
-    setText(el.word, question.word);
+    renderStem(question);
 
     renderOptions(question);
     resetFeedback();
@@ -293,8 +337,11 @@
     setText(el.feedbackIcon, isCorrect ? "✓" : "");
     setText(el.feedbackTitle, isCorrect ? "答对了！" : "");
     setHidden(el.feedbackTitleRow, !isCorrect); // 有错时框里只有意思行，没有标题行
-    // 结果框只写图和它的意思（印尼语），不加中文标签：让学生把"这个词＝这个东西"连起来
-    setText(el.feedbackAnswer, correctTile.emoji + " " + correctTile.translate);
+    /* 答案行：图版＝「图 + 印尼语意思」，不加中文标签（让学生把"这个词＝这个东西"连起来）；
+       文字版＝「汉字 · 印尼语」（拼音留到选项里看，答案行不放） */
+    setText(el.feedbackAnswer, correctTile.text
+      ? correctTile.text + " · " + correctTile.translate
+      : correctTile.emoji + " " + correctTile.translate);
     setHidden(el.feedbackAnswer, false);
     el.feedback.classList.remove("hidden");
   }

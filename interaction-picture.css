@@ -100,20 +100,21 @@
   text-align: center;
 }
 
-.picture-pinyin {
-  margin: 0 0 6px;
-  color: var(--text-subtle);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  overflow-wrap: anywhere;
-}
-
 .picture-question {
   margin: 0;
   font-size: var(--text-question);
   font-weight: 900;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* 题面下的印尼语小字（做法照情景选择页的 .situation-scene-id） */
+.picture-question-id {
+  margin: 6px 0 0;
+  color: var(--text-subtle);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
@@ -215,11 +216,26 @@
 }
 
 .picture-option-text {
-  flex: 1 1 auto;
   min-width: 0;
   font-size: var(--text-option);
   font-weight: 900;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* 选项两行：中文大字 + 拼音小字（拼音做法照词块页的铺底小字） */
+.picture-option-body {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.picture-option-pinyin {
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
@@ -398,4 +414,5 @@
   .picture-option { min-height: 56px; }
   /* 窄屏不缩字：一行放不下就换行 */
   .picture-option-text { font-size: 20px; }
+  .picture-option-pinyin { font-size: 10px; }
 }

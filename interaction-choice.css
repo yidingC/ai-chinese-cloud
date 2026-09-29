@@ -95,12 +95,18 @@
 }
 
 .choice-pinyin {
-  margin: 0 0 6px;
+  margin: 6px 0 0;
   color: var(--text-subtle);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.02em;
   overflow-wrap: anywhere;
+}
+
+/* 文字题的题面小字是印尼语（做法照看图单选页的 .picture-question-id），不是拼音 */
+.choice-pinyin.is-id {
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .choice-question {
@@ -117,6 +123,11 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+/* 文字选题（第 3 题）：四行竖排，一行一个 */
+.choice-grid.is-text-list {
+  grid-template-columns: 1fr;
 }
 
 .choice-tile {
@@ -148,6 +159,73 @@
 .choice-emoji {
   font-size: 72px;
   line-height: 1;
+}
+
+/* 文字选题（optionStyle: "text" 的题，如第 3 题）：一行一个、四行竖排；
+   行内＝字母块 +「汉字 + 拼音」整块左对齐；行高用最小值自适应——长短语换行时那一行自己长高，不缩字、不截断。
+   字号照全站尺子：可点字块汉字 22px、拼音 11px（窄屏各降一档，见文件末尾） */
+.choice-tile.is-text {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+/* 行首字母块：照情景选择页的 .situation-letter 搬（34×34、圆角 12px） */
+.choice-tile-letter {
+  flex: 0 0 auto;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 12px;
+  color: #7b7690;
+  background: var(--chip-fill);
+  font-size: 13px;
+  font-weight: 900;
+  transition: color var(--dur-press) ease, background var(--dur-press) ease;
+}
+
+/* 选中 / 答对 / 答错：字母块跟着整行一起变色（照情景选择页的做法） */
+.choice-tile.selected .choice-tile-letter {
+  color: #ffffff;
+  background: var(--purple);
+}
+
+.choice-tile.correct .choice-tile-letter {
+  color: #ffffff;
+  background: var(--answer-correct);
+}
+
+.choice-tile.wrong .choice-tile-letter {
+  color: #ffffff;
+  background: var(--answer-wrong);
+}
+
+/* 汉字 + 拼音两行：整块左对齐，拼音紧贴汉字下面 */
+.choice-tile-body {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.choice-tile-text {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.choice-tile-pinyin {
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 /* 选中：紫色出现的第一个时刻（点别的图可换，再点一下取消） */
@@ -294,4 +372,7 @@
   .choice-grid { gap: 10px; }
   .choice-tile { min-height: 132px; }
   .choice-emoji { font-size: 60px; }
+  /* 文字卡窄屏不缩到 13px 那档：汉字 20px、拼音 10px（一行放不下就换行） */
+  .choice-tile-text { font-size: 20px; }
+  .choice-tile-pinyin { font-size: 10px; }
 }

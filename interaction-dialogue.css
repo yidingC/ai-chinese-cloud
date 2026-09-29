@@ -14,6 +14,7 @@
   --answer-wrong: #f2555f;
   --answer-wrong-fill: #fff0f1;
   --text-quiet: #3f3a5c;
+  --text-subtle: #8f8aa3;
   --chip-fill: #f1f0f6;
   --dur-press: .15s;
   --dur-enter: .26s;
@@ -108,6 +109,16 @@
   border-bottom-left-radius: 8px;
   color: var(--text-quiet);
   background: var(--chip-fill);
+}
+
+/* 问句下的印尼语小字（做法照情景选择页的 .situation-scene-id） */
+.dialogue-them-translation {
+  margin: 6px 0 0;
+  color: var(--text-subtle);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .is-me .dialogue-bubble {

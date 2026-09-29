@@ -136,22 +136,25 @@
 
     const text = document.createElement("strong");
     text.textContent = word.text;
-    /* 拼音 + 印尼语意思打包成一条：空间不够时整体换行，「·」不会落在行尾 */
+    /* 拼音（＋ 提交后的印尼语意思）打包成一条：空间不够时整体换行，「·」不会落在行尾。
+       作答中词块只留中文 + 拼音；印尼语意思等提交后再补出来（错词退回待归类区时同样补出）。 */
     const note = document.createElement("span");
     note.className = "category-chip-note";
     const pinyin = document.createElement("small");
     pinyin.textContent = word.pinyin;
-    const sep = document.createElement("i");
-    sep.className = "category-chip-sep";
-    sep.setAttribute("aria-hidden", "true");
-    sep.textContent = "·";
-    const meaning = document.createElement("span");
-    meaning.className = "category-chip-id";
-    meaning.lang = "id";
-    meaning.textContent = word.meaningId;
     note.appendChild(pinyin);
-    note.appendChild(sep);
-    note.appendChild(meaning);
+    if (submitted) {
+      const sep = document.createElement("i");
+      sep.className = "category-chip-sep";
+      sep.setAttribute("aria-hidden", "true");
+      sep.textContent = "·";
+      const meaning = document.createElement("span");
+      meaning.className = "category-chip-id";
+      meaning.lang = "id";
+      meaning.textContent = word.meaningId;
+      note.appendChild(sep);
+      note.appendChild(meaning);
+    }
     chip.appendChild(text);
     chip.appendChild(note);
 

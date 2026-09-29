@@ -105,7 +105,7 @@ window.AICloudRoundContent = {
           ] },
         { id: "r11-q2", type: "picture",
           icon: "🐱", image: "", imageAlt: "一只猫",
-          prompt: "这是什么？", promptPinyin: "Zhè shì shénme?",
+          prompt: "这是什么？", promptId: "Ini apa?",
           options: [
             { id: "cat", text: "猫", pinyin: "māo", translate: "Kucing", correct: true },
             { id: "dog", text: "狗", pinyin: "gǒu", translate: "Anjing" },
@@ -120,10 +120,10 @@ window.AICloudRoundContent = {
         { id: "r11-q4", type: "poll",
           prompt: "下课后你最喜欢做什么？", promptId: "Setelah kelas, kamu paling suka melakukan apa?",
           options: [
-            { value: "music", emoji: "🎧", text: "听音乐", textId: "Mendengarkan musik" },
-            { value: "basketball", emoji: "🏀", text: "打篮球", textId: "Bermain basket" },
-            { value: "animation", emoji: "📺", text: "看中文动画", textId: "Menonton animasi Mandarin" },
-            { value: "chat", emoji: "💬", text: "和朋友聊天", textId: "Mengobrol dengan teman" }
+            { value: "music", emoji: "🎧", text: "听音乐", pinyin: "tīng yīn yuè" },
+            { value: "basketball", emoji: "🏀", text: "打篮球", pinyin: "dǎ lán qiú" },
+            { value: "animation", emoji: "📺", text: "看中文动画", pinyin: "kàn zhōng wén dòng huà" },
+            { value: "chat", emoji: "💬", text: "和朋友聊天", pinyin: "hé péng you liáo tiān" }
           ] }
       ]
     },

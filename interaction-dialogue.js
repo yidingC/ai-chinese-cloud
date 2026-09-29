@@ -72,6 +72,7 @@
     el.quoteAnswerZh = document.querySelector("[data-dialogue-quote-answer-zh]");
     el.quoteAnswerId = document.querySelector("[data-dialogue-quote-answer-id]");
     el.them = document.querySelector("[data-dialogue-them]");
+    el.themTranslation = document.querySelector("[data-dialogue-them-translation]");
     el.status = document.querySelector("[data-activity-status]");
   }
 
@@ -309,6 +310,11 @@
       el.me.classList.remove("is-wrong");
     }
     setHidden(el.mark, true);
+
+    /* 问句下的印尼语小字：内容跟着气泡上的 data-dialogue-them-id 走 */
+    const themTranslation = el.them ? el.them.dataset.dialogueThemId || "" : "";
+    setText(el.themTranslation, themTranslation);
+    setHidden(el.themTranslation, !themTranslation);
 
     renderOptions();
     resetFeedback();

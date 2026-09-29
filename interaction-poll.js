@@ -10,16 +10,17 @@
   const modal = window.AICloudFeedbackModal || null;
   const copy = window.AICloudFeedbackCopy || {};
 
-  /* 本页自带的示范题（题型体验用）：题干 + 4 个选项；字段结构与 round-content.js 里同题型的题目一致 */
+  /* 本页自带的示范题（题型体验用）：题干 + 4 个选项；字段结构与 round-content.js 里同题型的题目一致
+     选项两行 = 中文（大字）+ 拼音（小字），和词块页的写法一致 */
   const DEMO_QUESTION = {
     id: "poll-after-class",
     prompt: "下课后你最喜欢做什么？",
     promptId: "Setelah kelas, kamu paling suka melakukan apa?",
     options: [
-      { value: "music", emoji: "🎧", text: "听音乐", textId: "Mendengarkan musik" },
-      { value: "basketball", emoji: "🏀", text: "打篮球", textId: "Bermain basket" },
-      { value: "animation", emoji: "📺", text: "看中文动画", textId: "Menonton animasi Mandarin" },
-      { value: "chat", emoji: "💬", text: "和朋友聊天", textId: "Mengobrol dengan teman" }
+      { value: "music", emoji: "🎧", text: "听音乐", pinyin: "tīng yīn yuè" },
+      { value: "basketball", emoji: "🏀", text: "打篮球", pinyin: "dǎ lán qiú" },
+      { value: "animation", emoji: "📺", text: "看中文动画", pinyin: "kàn zhōng wén dòng huà" },
+      { value: "chat", emoji: "💬", text: "和朋友聊天", pinyin: "hé péng you liáo tiān" }
     ]
   };
 
@@ -52,10 +53,10 @@
 
   const textOf = (option) => {
     const zh = option ? option.querySelector(".poll-option-body strong") : null;
-    const id = option ? option.querySelector(".poll-option-body small") : null;
+    const pinyin = option ? option.querySelector(".poll-option-body small") : null;
     return {
       zh: zh ? zh.textContent.trim() : "",
-      id: id ? id.textContent.trim() : ""
+      pinyin: pinyin ? pinyin.textContent.trim() : ""
     };
   };
 
@@ -99,10 +100,10 @@
       body.className = "poll-option-body";
       const zh = document.createElement("strong");
       zh.textContent = item.text;
-      const id = document.createElement("small");
-      id.textContent = item.textId || "";
+      const pinyin = document.createElement("small");
+      pinyin.textContent = item.pinyin || "";
       body.appendChild(zh);
-      body.appendChild(id);
+      body.appendChild(pinyin);
 
       label.appendChild(input);
       label.appendChild(emoji);
