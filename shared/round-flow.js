@@ -23,6 +23,17 @@
   const EXPIRE_MS = 10 * 60 * 1000;   // 一轮超过 10 分钟没做完：当过期，重新计时
   const MODAL_DELAY = 1400;           // 回执条先出场，完成弹窗后到
 
+  /* 老师预览：整轮计时走预览专用 key，"下一题"链接全程带着预览参数 */
+  function activePreview() {
+    const api = global.AICloudPreview;
+    return api && typeof api.isActive === "function" && api.isActive() ? api : null;
+  }
+
+  function startKey() {
+    const api = activePreview();
+    return api ? api.roundStartKey() : START_KEY;
+  }
+
   let current = { active: false, slot: 0, index: 0, total: 0, questions: [], question: null };
   let answeredNow = false;            // 当前这一题已经判完分（进度行的点变绿）
   let modalTimer = 0;
@@ -66,8 +77,9 @@
   function hrefFor(slot, index, total, type) {
     const page = pageOf(type);
     if (!page) return "";
+    const api = activePreview();
     return page + "?type=" + encodeURIComponent(type) + "&mode=class&slot=" + slot +
-      "&q=" + index + "&total=" + total;
+      "&q=" + index + "&total=" + total + (api ? "&" + api.query() : "");
   }
 
   /* 是不是轮内：课堂模式 + 四个参数齐 + 数据里这一轮在、题数对得上、这一题的题型就是本页题型 */
@@ -91,7 +103,7 @@
 
   function readStore() {
     try {
-      const raw = global.localStorage.getItem(START_KEY);
+      const raw = global.localStorage.getItem(startKey());
       const store = raw ? JSON.parse(raw) : {};
       return store && typeof store === "object" ? store : {};
     } catch (error) {
@@ -101,7 +113,7 @@
 
   function writeStore(store) {
     try {
-      global.localStorage.setItem(START_KEY, JSON.stringify(store));
+      global.localStorage.setItem(startKey(), JSON.stringify(store));
     } catch (error) {
       /* 浏览器挡住 localStorage 时只影响计时，页面照常 */
     }
@@ -200,7 +212,8 @@
         {
           label: "返回课堂",
           onSelect: function () {
-            if (global.location) global.location.href = "classroom.html";
+            const api = activePreview();
+            if (global.location) global.location.href = api ? api.classroomHref() : "classroom.html";
           }
         },
         /* 印尼语副行显式给（"再做一次"不在公共弹窗的标准动作表里，不给就没有第二行小字） */

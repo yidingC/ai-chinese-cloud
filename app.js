@@ -5,6 +5,116 @@
   const platformStore = window.AICloudPlatformStore;
   const activityTypes = window.AICloudActivityTypes;
   const adminBase = "admin/";
+
+  /* ---- 老师预览（teacher.html 那条线）-----------------------------------------
+     只多一条"老师视角"的入口，学生侧行为一个字不变：
+     - 老师流程的页面 URL 带 ?preview=teacher&lesson=N，进入时顺手记进 sessionStorage，
+       这样题型页里那些写死的「返回课堂」链接不用改，也能回来看得见的课堂页；
+     - 预览的进度全部存在预览专用 key 上：学生的 completedSlots / results / speedTimes /
+       rank memo 一个字节都不碰；
+     - teacher.html 每次加载会清空预览进度 —— 「每进一次 = 全新一局」。 */
+  const PREVIEW_STATE_KEY = "ai-chinese-cloud-preview-state-v1";
+  const PREVIEW_ROUND_KEY = "ai-chinese-cloud-round-start-preview-v1";
+  const PREVIEW_SESSION_KEY = "ai-chinese-cloud-preview-session-v1";
+  const PREVIEW_TAG = "teacher";
+  const LESSON_CN = ["一", "二", "三", "四", "五"];
+  const LESSON_TITLE_FALLBACK = ["嗨！你好！", "第二课", "第三课"];
+
+  const previewApi = (() => {
+    const readSession = () => {
+      try {
+        const raw = window.sessionStorage.getItem(PREVIEW_SESSION_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        return parsed && typeof parsed === "object" && parsed.active ? parsed : null;
+      } catch (error) {
+        return null;
+      }
+    };
+    const writeSession = (lesson) => {
+      try {
+        window.sessionStorage.setItem(PREVIEW_SESSION_KEY, JSON.stringify({ active: true, lesson: Number(lesson) || 0 }));
+      } catch (error) {
+        /* 存不了只影响「返回课堂」的续接，页面照常 */
+      }
+    };
+    const search = () => {
+      try {
+        return new URLSearchParams(window.location.search);
+      } catch (error) {
+        return new URLSearchParams("");
+      }
+    };
+    const urlActive = () => search().get("preview") === PREVIEW_TAG;
+    const lessonParam = () => Number(search().get("lesson")) || 0;
+    const lesson = () => {
+      if (lessonParam() > 0) return lessonParam();
+      const session = readSession();
+      if (session && Number(session.lesson) > 0) return Number(session.lesson);
+      return 1;
+    };
+    const isActive = () => urlActive() || !!readSession();
+    const seedLessons = () => {
+      try {
+        const seed = window.AICloudSeedData;
+        const data = seed && typeof seed.createSeedData === "function" ? seed.createSeedData() : null;
+        return data && Array.isArray(data.lessons) ? data.lessons : [];
+      } catch (error) {
+        return [];
+      }
+    };
+    const lessonInfoFor = (no) => {
+      const index = Math.max(1, Number(no) || 1) - 1;
+      const item = seedLessons()[index] || null;
+      const title = item && item.title ? item.title : (LESSON_TITLE_FALLBACK[index] || `第 ${index + 1} 课`);
+      return {
+        no: index + 1,
+        title: title,
+        subtitle: item && item.subtitle ? item.subtitle : "",
+        label: `第${LESSON_CN[index] || index + 1}课 · ${title}`
+      };
+    };
+    const queryFor = (no) => `preview=${PREVIEW_TAG}&lesson=${Number(no) > 0 ? Number(no) : lesson()}`;
+    const classroomHref = () => (isActive() ? `classroom.html?${queryFor(lesson())}` : "classroom.html");
+    const withParams = (href) => {
+      const joiner = href.indexOf("?") >= 0 ? "&" : "?";
+      return href + joiner + queryFor(lesson());
+    };
+    const startSession = (no) => writeSession(Number(no) > 0 ? Number(no) : lesson());
+    const endSession = () => {
+      try {
+        window.sessionStorage.removeItem(PREVIEW_SESSION_KEY);
+      } catch (error) {
+        /* 忽略 */
+      }
+    };
+    const clearProgress = () => {
+      try {
+        window.localStorage.removeItem(PREVIEW_STATE_KEY);
+        window.localStorage.removeItem(PREVIEW_ROUND_KEY);
+      } catch (error) {
+        /* 忽略 */
+      }
+    };
+    const isTeacherSide = () => isActive() || /teacher(-empty)?\.html$/.test(window.location.pathname);
+    return {
+      isActive,
+      isTeacherSide,
+      urlActive,
+      lesson,
+      lessonInfo: () => lessonInfoFor(lesson()),
+      lessonInfoFor,
+      queryFor,
+      query: () => queryFor(lesson()),
+      classroomHref,
+      withParams,
+      stateKey: () => (isActive() ? PREVIEW_STATE_KEY : STORAGE_KEY),
+      roundStartKey: () => PREVIEW_ROUND_KEY,
+      startSession,
+      endSession,
+      clearProgress
+    };
+  })();
+  window.AICloudPreview = previewApi;
   /* 旧的三个完成标记：继续写（老进度存在它们身上），但课堂页现在认任意关卡号 */
   const TASK_STATE_KEYS = ["task1Done", "task2Done", "task3Done"];
   /* 关卡卡片的配色只有这三种；数据里没写明或写错时按顺序循环分配 */
@@ -60,7 +170,8 @@
   const levelHref = (type, slot, questionCount) => {
     const base = `${cardPage(type)}?type=${encodeURIComponent(type)}&mode=class&slot=${slot}`;
     const count = Number(questionCount) || 0;
-    return count > 0 ? `${base}&q=1&total=${count}` : base;
+    const suffix = previewApi.isActive() ? `&${previewApi.query()}` : "";
+    return (count > 0 ? `${base}&q=1&total=${count}` : base) + suffix;
   };
 
   /* 课程数据校验：缺字段、没有关卡、格式不对 → 整份退回兜底数据 */
@@ -153,7 +264,7 @@
 
   function loadState() {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(previewApi.stateKey());
       if (!raw) return { ...DEFAULT_STATE, completedSlots: [], results: [], speedTimes: {} };
       const parsed = JSON.parse(raw);
       return {
@@ -175,7 +286,7 @@
 
   function persistState() {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      window.localStorage.setItem(previewApi.stateKey(), JSON.stringify(appState));
     } catch (error) {
       // The prototype still works for the current page if storage is unavailable.
     }
@@ -280,6 +391,10 @@
 
     const overlay = document.createElement("div");
     overlay.className = "demo-sheet-overlay";
+    /* 视角行：学生侧 = 进老师预览；老师侧 = 回学生端（点它时把预览标记清掉） */
+    const roleRow = previewApi.isTeacherSide()
+      ? '<a class="demo-admin-link demo-role-link" href="index.html" data-demo-student-link>回到学生端 →</a>'
+      : '<a class="demo-admin-link demo-role-link" href="teacher.html" data-demo-teacher-link>进入老师预览 →</a>';
     overlay.innerHTML = `
       <section class="demo-sheet" role="dialog" aria-modal="true" aria-labelledby="demo-title">
         <div class="demo-handle"></div>
@@ -295,11 +410,15 @@
             </button>
           `).join("")}
         </div>
+        ${roleRow}
         <a class="demo-admin-link" href="admin/">打开三角色管理后台 →</a>
         <button type="button" class="demo-reset" data-demo-reset>重置三关互动进度</button>
       </section>
     `;
     document.body.appendChild(overlay);
+
+    const studentLink = overlay.querySelector("[data-demo-student-link]");
+    if (studentLink) studentLink.addEventListener("click", () => previewApi.endSession());
 
     const close = () => overlay.classList.remove("open");
     const renderActive = () => {
@@ -330,7 +449,7 @@
         showToast(`演示状态：${PHASES[next].label} · ${PHASES[next].status}`);
         close();
 
-        if (document.body.dataset.requiresOpen === "true" && !PHASES[next].open) {
+        if (!previewApi.isActive() && document.body.dataset.requiresOpen === "true" && !PHASES[next].open) {
           window.clearTimeout(redirectTimer);
           redirectTimer = window.setTimeout(() => {
             window.location.href = "classroom.html?locked=1";
@@ -423,6 +542,8 @@
   }
 
   function initHome() {
+    /* 回到学生端 = 清掉老师预览的会话标记（学生页永远按学生身份走） */
+    previewApi.endSession();
     const status = document.querySelector("[data-home-status]");
     const classroomLabel = document.querySelector("[data-home-classroom-label]");
 
@@ -475,12 +596,15 @@
   }
 
   function initClassroom() {
+    /* 老师预览：单人数据 + 只读写预览进度；学生侧照旧 */
+    const PREVIEW = previewApi.isActive();
     /* 这一节课的课程数据：读 classroom-course.js（同一页的另一个脚本）；读不到就走兜底。
        在这里读、不在文件顶上读 —— 脚本之间谁先谁后跟打包方式有关，进场时读最稳。 */
     const COURSE = normalizeCourse(window.AICloudClassroomCourse);
     const LEVEL_COUNT = COURSE.levels.length;
-    /* 班级人数：卡片人数和名次行共用这一个数（数据里配，一页不许出现两个数字） */
-    const CLASSROOM_TOTAL = COURSE.classSize;
+    /* 班级人数：卡片人数和名次行共用这一个数（数据里配，一页不许出现两个数字）；
+       老师预览按 1 个人算 */
+    const CLASSROOM_TOTAL = PREVIEW ? 1 : COURSE.classSize;
     /* 每完成一关得多少分（做错不扣分，同一关重做不重复加） */
     const LEVEL_POINTS = COURSE.pointsPerLevel;
     /* 满分：按关卡数算，不写死 */
@@ -513,6 +637,7 @@
       }
     };
     const writeRankMemo = (rank, score) => {
+      if (PREVIEW) return;
       try {
         window.localStorage.setItem(RANK_MEMO_KEY, JSON.stringify({ rank, score }));
       } catch (error) {
@@ -586,6 +711,19 @@
     renderCourseShell();
     stars = [...document.querySelectorAll("[data-stars] .cls-star")];
 
+    /* 预览：头部课节名跟着点进来的那一课走（第 1/2 课共用同一套演示内容） */
+    if (PREVIEW) {
+      const info = previewApi.lessonInfo();
+      const lessonNode = document.querySelector(".cls-strip-lesson");
+      if (lessonNode) lessonNode.textContent = info.title;
+      const chipNode = document.querySelector("[data-lesson-chip]");
+      if (chipNode) {
+        chipNode.textContent = `LESSON ${info.no}`;
+        chipNode.hidden = false;
+      }
+      if (strip && info.subtitle) strip.dataset.lessonId = info.subtitle;
+    }
+
     const levels = [...document.querySelectorAll(".cls-level")].map((node) => {
       const index = Number(node.dataset.level) || 0;
       const level = COURSE.levels[index - 1] || {};
@@ -635,8 +773,8 @@
       score: index < 4 ? MAX_SCORE : index < 11 ? LEVEL_POINTS * 2 : index < 21 ? LEVEL_POINTS : 0
     }));
 
-    let peers = buildPeers();
-    const rankMemo = readRankMemo();
+    let peers = PREVIEW ? [] : buildPeers();
+    const rankMemo = PREVIEW ? null : readRankMemo();
     let lastRank = rankMemo ? rankMemo.rank : 0;
     /* 首帧标记：区分"刚打开页面"和"页面开着时的实时更新" */
     let booted = false;
@@ -855,7 +993,8 @@
       const current = phase();
       const done = doneSlots();
       const completed = done.length;
-      const open = current.open;
+      /* 预览跳过阶段限制：演示面板切哪种阶段都能玩 */
+      const open = PREVIEW ? true : current.open;
 
       if (strip) strip.dataset.phase = appState.phase;
       stars.forEach((star, index) => star.classList.toggle("is-on", index < completed));
@@ -908,7 +1047,7 @@
 
     levels.forEach((level) => {
       level.node.addEventListener("click", () => {
-        if (!phase().open) {
+        if (!PREVIEW && !phase().open) {
           showToast(appState.phase === "before" ? "请在开课后进入互动" : "互动入口已关闭");
           return;
         }
@@ -986,8 +1125,8 @@
       const rows = top.map((entry, index) => boardRowHtml(index + 1, entry.name, entry.time, !!entry.isMe));
 
       if (!myTime) {
-        /* 这关还没做：名单照给，底下单独一行灰色的"你" */
-        rows.push('<li class="speed-row is-dots" aria-hidden="true">…</li>');
+        /* 这关还没做：名单照给，底下单独一行灰色的"你"（预览模式没有同学，就不放省略行） */
+        if (all.length) rows.push('<li class="speed-row is-dots" aria-hidden="true">…</li>');
         boardList.innerHTML = rows.join("");
         boardMe.className = "speed-me is-waiting";
         boardMe.innerHTML = '<span class="speed-name">你</span><span class="speed-time">还没上榜</span>';
@@ -1123,7 +1262,7 @@
       stageOneStarted = false;
       dipUsed = false;
       lastRank = 0;
-      peers = buildPeers();
+      peers = PREVIEW ? [] : buildPeers();
       closeBoard();
       if (celebrateTimer !== null) {
         window.clearTimeout(celebrateTimer);
@@ -1176,9 +1315,61 @@
 
   function guardOpenPage() {
     if (document.body.dataset.requiresOpen !== "true") return true;
+    if (previewApi.isActive()) return true;
     if (phase().open) return true;
     window.location.replace("classroom.html?locked=1");
     return false;
+  }
+
+  /* 老师预览：把页面里写死的「返回课堂」链接（多为 classroom.html）顺手补上预览参数，
+     往返不丢 —— 18 个题型页里那些链接不用一个个改 */
+  function installPreviewLinkRelay() {
+    document.addEventListener("click", (event) => {
+      if (!previewApi.isActive()) return;
+      const target = event.target;
+      const link = target && typeof target.closest === "function" ? target.closest("a[href]") : null;
+      if (!link) return;
+      const href = link.getAttribute("href") || "";
+      if (href.indexOf("preview=") >= 0) return;
+      if (!/^classroom\.html([?#]|$)/.test(href)) return;
+      link.setAttribute("href", previewApi.withParams(href));
+    }, true);
+  }
+
+  /* ---- 老师端课节列表（teacher.html）：每次打开都清空预览进度 = 全新一局 ---- */
+  function initTeacher() {
+    previewApi.clearProgress();
+    const list = document.querySelector("[data-teacher-list]");
+    if (!list) return;
+
+    const CARD_TONES = ["violet", "mint", "orange"];
+    const PLAY_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M8 4.6v14.8l12.2-7.4z"/></svg>`;
+    /* 第 1、2 课有内容（共用同一套演示内容），第 3 课没配内容 */
+    const LESSON_HAS_CONTENT = [true, true, false];
+    const cards = LESSON_HAS_CONTENT.map((hasContent, index) => {
+      const no = index + 1;
+      const info = previewApi.lessonInfoFor(no);
+      const href = hasContent ? `classroom.html?${previewApi.queryFor(no)}` : `teacher-empty.html?lesson=${no}`;
+      return `
+      <a class="teacher-card" data-tone="${CARD_TONES[index % CARD_TONES.length]}" href="${href}" data-teacher-card="${no}">
+        <span class="teacher-card-title">${escapeText(info.label)}</span>
+        <span class="teacher-card-action" aria-hidden="true">${PLAY_ICON}</span>
+      </a>`;
+    });
+    list.innerHTML = cards.join("");
+    list.querySelectorAll("[data-teacher-card]").forEach((card) => {
+      card.addEventListener("click", () => {
+        const no = Number(card.dataset.teacherCard) || 0;
+        if (no === 1 || no === 2) previewApi.startSession(no);
+      });
+    });
+  }
+
+  /* ---- 没配内容的课节（teacher-empty.html）：顶栏带课节名，中间一句话 ---- */
+  function initTeacherEmpty() {
+    const title = document.querySelector("[data-empty-title]");
+    if (!title) return;
+    title.textContent = previewApi.lessonInfo().label;
   }
 
   function makeSvgPath(board, svg, from, to, className = "") {
@@ -1319,7 +1510,7 @@
             const slot = slotFromUrl(3);
             recordOwnTime(slot, "match", startedAt);
             markSlotDone(slot);
-            recordPlatformCompletion(slot);
+            if (!previewApi.isActive()) recordPlatformCompletion(slot);
             window.setTimeout(openCompleteModal, 520);
           }
           return;
@@ -1374,7 +1565,7 @@
           {
             label: "返回课堂",
             onSelect: () => {
-              window.location.href = "classroom.html";
+              window.location.href = previewApi.classroomHref();
             }
           },
           {
@@ -1553,7 +1744,7 @@
           if (slot > 0) {
             recordOwnTime(slot, "memory", startedAt);
             markSlotDone(slot);
-            recordPlatformCompletion(slot);
+            if (!previewApi.isActive()) recordPlatformCompletion(slot);
           }
           window.setTimeout(openCompleteModal, 520);
         }
@@ -1599,7 +1790,7 @@
           {
             label: "返回课堂",
             onSelect: () => {
-              window.location.href = "classroom.html";
+              window.location.href = previewApi.classroomHref();
             }
           },
           {
@@ -1618,7 +1809,11 @@
   }
 
   function init() {
+    /* 带 ?preview=teacher 进来时顺手把标记记进 sessionStorage（往返不丢） */
+    if (previewApi.urlActive()) previewApi.startSession();
+
     installDemoControls();
+    installPreviewLinkRelay();
 
     if (!guardOpenPage()) return;
 
@@ -1627,6 +1822,8 @@
     if (page === "classroom") initClassroom();
     if (page === "match") initMatch();
     if (page === "memory") initMemory();
+    if (page === "teacher") initTeacher();
+    if (page === "teacher-empty") initTeacherEmpty();
   }
 
   /* 等 DOMContentLoaded 再进场：那一刻本页所有脚本都已执行完。

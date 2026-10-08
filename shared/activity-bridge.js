@@ -6,6 +6,13 @@
   };
   const STORAGE_KEY = "ai-chinese-cloud-classroom-demo-v1";
   const CHANGE_EVENT = "classroom-state-change";
+
+  /* 老师预览：进度读写的 key 由 app.js 的 AICloudPreview 决定（预览走独立 key），
+     没有预览标记时就是学生进度 key —— 学生侧行为不变 */
+  function stateKey() {
+    const preview = global.AICloudPreview;
+    return preview && typeof preview.isActive === "function" && preview.isActive() ? preview.stateKey() : STORAGE_KEY;
+  }
   const DEFAULTS = {
     phase: "live",
     task1Done: false,
@@ -17,7 +24,7 @@
   function read() {
     let stored = {};
     try {
-      const raw = global.localStorage.getItem(STORAGE_KEY);
+      const raw = global.localStorage.getItem(stateKey());
       stored = raw ? JSON.parse(raw) : {};
     } catch (error) {
       stored = {};
@@ -31,7 +38,7 @@
   function write(patch) {
     const next = Object.assign(read(), patch || {});
     try {
-      global.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      global.localStorage.setItem(stateKey(), JSON.stringify(next));
     } catch (error) {
       next.storageBlocked = true;
     }
@@ -100,7 +107,10 @@
     if (ctx.mode !== "class" || ctx.slot <= 0) return outcome;
     recordResult(Object.assign({}, result || {}, { slot: ctx.slot, type: ctx.type }));
     outcome.recorded = true;
-    outcome.next = "classroom.html";
+    const preview = global.AICloudPreview;
+    outcome.next = preview && typeof preview.isActive === "function" && preview.isActive()
+      ? preview.classroomHref()
+      : "classroom.html";
     const delay = Math.max(0, Number(result && result.delay) || 0);
     /* 默认不自动跳转：课堂模式改由完成弹窗的【返回课堂】按钮负责；
        调用方明确传了正数 delay 时，仍保留定时跳转能力。 */

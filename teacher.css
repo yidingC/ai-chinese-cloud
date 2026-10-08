@@ -1,0 +1,131 @@
+/* 老师预览页（teacher.html / teacher-empty.html）· 2026-10-08
+   卡片照课堂页轮次卡（.cls-level）的材质与配色：厚圆角 + 硬底边 + 右侧 ▶；
+   卡面只放课节名，不放人数 / 闪电 / 星星。 */
+
+.teacher-page { padding: 18px 16px 40px; }
+
+.teacher-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.teacher-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 118px;
+  padding: 18px 16px 18px 20px;
+  overflow: hidden;
+  border-radius: 28px;
+  color: #ffffff;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .18s cubic-bezier(.2,.9,.3,1.25), box-shadow .18s ease, filter .2s ease;
+}
+
+/* 卡面高光：让它像一块实体卡片，不像一块色板 */
+.teacher-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 54%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.teacher-card[data-tone="violet"] {
+  background:
+    radial-gradient(circle at 86% 6%, rgba(255,255,255,.30), transparent 34%),
+    linear-gradient(152deg, #8b6bff 0%, #6b4bf5 56%, #5a38ec 100%);
+  box-shadow: 0 8px 0 #4028b8, 0 20px 34px rgba(76, 53, 232, 0.26);
+}
+
+.teacher-card[data-tone="mint"] {
+  background:
+    radial-gradient(circle at 86% 6%, rgba(255,255,255,.32), transparent 34%),
+    linear-gradient(152deg, #55e0c4 0%, #2fb89c 58%, #1f9e86 100%);
+  box-shadow: 0 8px 0 #187a66, 0 20px 34px rgba(42, 142, 126, 0.24);
+}
+
+.teacher-card[data-tone="orange"] {
+  background:
+    radial-gradient(circle at 86% 6%, rgba(255,255,255,.34), transparent 34%),
+    linear-gradient(152deg, #ffc46b 0%, #f79a3c 58%, #e9821f 100%);
+  box-shadow: 0 8px 0 #b96513, 0 20px 34px rgba(233, 130, 31, 0.24);
+}
+
+.teacher-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  top: -46px;
+  width: 152px;
+  height: 152px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.teacher-card:active {
+  transform: translateY(8px);
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.teacher-card[data-tone="violet"]:active { box-shadow: 0 0 0 #4028b8; }
+.teacher-card[data-tone="mint"]:active { box-shadow: 0 0 0 #187a66; }
+.teacher-card[data-tone="orange"]:active { box-shadow: 0 0 0 #b96513; }
+
+.teacher-card-title {
+  position: relative;
+  z-index: 2;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.teacher-card-action {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: #ffffff;
+  filter: drop-shadow(0 3px 7px rgba(23, 12, 84, 0.30));
+}
+
+.teacher-card-action svg {
+  width: 42px;
+  height: 42px;
+  margin-left: 5px;
+}
+
+/* ---- 没配内容的课节（teacher-empty.html）：小灰图标 + 一句话 ---- */
+.teacher-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 28vh 24px 0;
+  text-align: center;
+}
+
+.teacher-empty-icon {
+  font-size: 44px;
+  filter: grayscale(1);
+  opacity: 0.34;
+}
+
+.teacher-empty-text {
+  margin: 0;
+  color: #655f78;
+  font-size: 14px;
+  font-weight: 800;
+}
