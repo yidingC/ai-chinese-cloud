@@ -391,10 +391,14 @@
 
     const overlay = document.createElement("div");
     overlay.className = "demo-sheet-overlay";
-    /* 视角行：学生侧 = 进老师预览；老师侧 = 回学生端（点它时把预览标记清掉） */
-    const roleRow = previewApi.isTeacherSide()
-      ? '<a class="demo-admin-link demo-role-link" href="index.html" data-demo-student-link>回到学生端 →</a>'
-      : '<a class="demo-admin-link demo-role-link" href="teacher.html" data-demo-teacher-link>进入老师预览 →</a>';
+    /* 身份开关：左「老师端」＝带老师会话；右「学生端」＝无会话。点哪边切哪边，也支持拖动 */
+    const teacherSide = previewApi.isTeacherSide();
+    const roleSwitch = `
+        <div class="demo-role-switch" data-role-switch data-role="${teacherSide ? "teacher" : "student"}">
+          <span class="demo-role-knob" aria-hidden="true"></span>
+          <button type="button" class="demo-role-option" data-role-option="teacher" aria-pressed="${teacherSide ? "true" : "false"}">老师端</button>
+          <button type="button" class="demo-role-option" data-role-option="student" aria-pressed="${teacherSide ? "false" : "true"}">学生端</button>
+        </div>`;
     overlay.innerHTML = `
       <section class="demo-sheet" role="dialog" aria-modal="true" aria-labelledby="demo-title">
         <div class="demo-handle"></div>
@@ -410,15 +414,90 @@
             </button>
           `).join("")}
         </div>
-        ${roleRow}
+        ${roleSwitch}
         <a class="demo-admin-link" href="admin/">打开三角色管理后台 →</a>
         <button type="button" class="demo-reset" data-demo-reset>重置三关互动进度</button>
       </section>
     `;
     document.body.appendChild(overlay);
 
-    const studentLink = overlay.querySelector("[data-demo-student-link]");
-    if (studentLink) studentLink.addEventListener("click", () => previewApi.endSession());
+    /* ---- 身份开关：切到老师端 = 记上老师会话并落老师视角首页；切到学生端 = 清会话回学生首页。
+       两边都收在 index.html；已经在目标身份时只收面板、不换页 ---- */
+    const roleTrack = overlay.querySelector("[data-role-switch]");
+    const roleKnob = roleTrack.querySelector(".demo-role-knob");
+    const roleOptions = [...roleTrack.querySelectorAll("[data-role-option]")];
+    let suppressRoleClickUntil = 0;
+    let roleDrag = null;
+
+    const switchRole = (role) => {
+      if (role === "teacher") {
+        const already = previewApi.isTeacherSide();
+        previewApi.startSession();
+        if (already) { close(); return; }
+        window.location.href = "index.html";
+        return;
+      }
+      const wasTeacher = previewApi.isTeacherSide();
+      previewApi.endSession();
+      if (wasTeacher) { window.location.href = "index.html"; return; }
+      close();
+    };
+
+    const renderRole = () => {
+      const side = previewApi.isTeacherSide();
+      roleTrack.dataset.role = side ? "teacher" : "student";
+      roleOptions.forEach((option) => {
+        const active = (option.dataset.roleOption === "teacher") === side;
+        option.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+    };
+
+    roleOptions.forEach((option) => {
+      option.addEventListener("click", () => {
+        if (Date.now() < suppressRoleClickUntil) return;
+        switchRole(option.dataset.roleOption);
+      });
+    });
+
+    roleTrack.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      roleDrag = { id: event.pointerId, startX: event.clientX, moved: false };
+    });
+    roleTrack.addEventListener("pointermove", (event) => {
+      if (!roleDrag || event.pointerId !== roleDrag.id) return;
+      const rect = roleTrack.getBoundingClientRect();
+      const knobWidth = rect.width / 2 - 4;
+      const dx = event.clientX - roleDrag.startX;
+      if (!roleDrag.moved && Math.abs(dx) > 4) {
+        roleDrag.moved = true;
+        roleTrack.classList.add("is-dragging");
+        try { roleTrack.setPointerCapture(roleDrag.id); } catch (error) { /* 忽略 */ }
+      }
+      if (!roleDrag.moved) return;
+      const base = roleTrack.dataset.role === "teacher" ? 0 : knobWidth;
+      const x = Math.max(0, Math.min(knobWidth, base + dx));
+      roleKnob.style.transform = `translateX(${x}px)`;
+    });
+    const endRoleDrag = (event) => {
+      if (!roleDrag || event.pointerId !== roleDrag.id) return;
+      const moved = roleDrag.moved;
+      roleDrag = null;
+      if (!moved) return;
+      suppressRoleClickUntil = Date.now() + 400;
+      const rect = roleTrack.getBoundingClientRect();
+      const knobWidth = rect.width / 2 - 4;
+      const knobLeft = event.clientX - rect.left - 4 - knobWidth / 2;
+      roleTrack.classList.remove("is-dragging");
+      roleKnob.style.transform = "";
+      switchRole(knobLeft < knobWidth / 2 ? "teacher" : "student");
+    };
+    roleTrack.addEventListener("pointerup", endRoleDrag);
+    roleTrack.addEventListener("pointercancel", () => {
+      if (!roleDrag) return;
+      roleDrag = null;
+      roleTrack.classList.remove("is-dragging");
+      roleKnob.style.transform = "";
+    });
 
     const close = () => overlay.classList.remove("open");
     const renderActive = () => {
@@ -430,6 +509,7 @@
         button.classList.toggle("active", active);
         button.setAttribute("aria-pressed", active ? "true" : "false");
       });
+      renderRole();
     };
 
     fab.addEventListener("click", () => {
@@ -542,12 +622,18 @@
   }
 
   function initHome() {
-    /* 回到学生端 = 清掉老师预览的会话标记（学生页永远按学生身份走） */
-    previewApi.endSession();
+    /* 老师端首页：身份由演示面板的开关决定（学生端 = 无会话，老师端 = 带老师会话）。
+       老师视角下「课堂互动」磁贴不受阶段限制、点击去课节列表 */
+    const TEACHER_VIEW = previewApi.isActive();
     const status = document.querySelector("[data-home-status]");
     const classroomLabel = document.querySelector("[data-home-classroom-label]");
 
     const render = () => {
+      if (TEACHER_VIEW) {
+        if (status) status.hidden = true;
+        if (classroomLabel) classroomLabel.textContent = "进入互动";
+        return;
+      }
       const current = phase();
       if (status) {
         status.textContent = current.shortLabel;
@@ -558,12 +644,14 @@
       }
     };
 
+    const goTeacherList = () => { window.location.href = "teacher.html"; };
+
     document.querySelectorAll("[data-classroom-entry]").forEach((button) => {
-      button.addEventListener("click", goToClassroom);
+      button.addEventListener("click", TEACHER_VIEW ? goTeacherList : goToClassroom);
     });
 
     document.querySelectorAll("[data-platform-lesson]").forEach((button) => {
-      button.addEventListener("click", openPlatformLesson);
+      button.addEventListener("click", TEACHER_VIEW ? goTeacherList : openPlatformLesson);
     });
 
     const snapshot = currentPlatformSnapshot();
@@ -580,7 +668,7 @@
       if (phrases) {
         phrases.innerHTML = (snapshot.lesson?.tags || ["中文", "大班课", "互动"]).map((tag) => `<span>${tag}</span>`).join("");
       }
-      if (action) action.textContent = "打开后台课节内容 →";
+      if (action && !TEACHER_VIEW) action.textContent = "打开后台课节内容 →";
     }
 
     document.querySelectorAll("[data-demo-feature]").forEach((button) => {
@@ -713,6 +801,12 @@
 
     /* 预览：头部课节名跟着点进来的那一课走（第 1/2 课共用同一套演示内容） */
     if (PREVIEW) {
+      /* 返回键回「课节列表」（真实链路：课堂模块 → 课节列表 → 课堂互动）；学生侧照旧去首页 */
+      const backLink = document.querySelector(".page-header a.icon-button");
+      if (backLink) {
+        backLink.setAttribute("href", "teacher.html");
+        backLink.setAttribute("aria-label", "返回课堂列表");
+      }
       const info = previewApi.lessonInfo();
       const lessonNode = document.querySelector(".cls-strip-lesson");
       if (lessonNode) lessonNode.textContent = info.title;
@@ -1342,22 +1436,52 @@
     const list = document.querySelector("[data-teacher-list]");
     if (!list) return;
 
-    const CARD_TONES = ["violet", "mint", "orange"];
     const PLAY_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M8 4.6v14.8l12.2-7.4z"/></svg>`;
-    /* 第 1、2 课有内容（共用同一套演示内容），第 3 课没配内容 */
-    const LESSON_HAS_CONTENT = [true, true, false];
-    const cards = LESSON_HAS_CONTENT.map((hasContent, index) => {
+    /* 演示表（都在演示层）：班级 / 排期（今天、明天、后天）/ 时间 / 有没有配内容。
+       time 为空 = 跟课堂页演示的 live 场一致（进入时刻往前 10 分钟） */
+    const LESSONS = [
+      { className: "印尼八班", dayOffset: 0, time: "", hasContent: true },
+      { className: "印尼八班", dayOffset: 1, time: "20:00", hasContent: true },
+      { className: "印尼七班", dayOffset: 2, time: "19:30", hasContent: false }
+    ];
+    /* 「已配置 N 轮互动」的 N 从课堂数据取，不写死 */
+    const course = window.AICloudClassroomCourse;
+    const roundCount = course && Array.isArray(course.levels) && course.levels.length ? course.levels.length : 0;
+    const WEEK_CN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    const pad2 = (value) => String(value).padStart(2, "0");
+    /* 日期块按打开当天的真实日期实时算：月 + 日 + 周几 */
+    const dateFor = (dayOffset) => {
+      const date = new Date();
+      date.setDate(date.getDate() + dayOffset);
+      return { month: `${date.getMonth() + 1}月`, day: String(date.getDate()), week: WEEK_CN[date.getDay()] };
+    };
+    const clockFor = (time) => {
+      if (time) return time;
+      const start = new Date(Date.now() - 10 * 60 * 1000);
+      return `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
+    };
+
+    const cards = LESSONS.map((lesson, index) => {
       const no = index + 1;
       const info = previewApi.lessonInfoFor(no);
-      const href = hasContent ? `classroom.html?${previewApi.queryFor(no)}` : `teacher-empty.html?lesson=${no}`;
-      return `
-      <a class="teacher-card" data-tone="${CARD_TONES[index % CARD_TONES.length]}" href="${href}" data-teacher-card="${no}">
-        <span class="teacher-card-title">${escapeText(info.label)}</span>
-        <span class="teacher-card-action" aria-hidden="true">${PLAY_ICON}</span>
-      </a>`;
+      const date = dateFor(lesson.dayOffset);
+      const status = lesson.hasContent ? `已配置 ${roundCount} 轮互动` : "未配置课堂互动";
+      const body = `
+        <span class="teacher-date"><small>${date.month}</small><b>${date.day}</b><i>${date.week}</i></span>
+        <span class="teacher-copy">
+          <span class="teacher-class">${escapeText(lesson.className)}</span>
+          <span class="teacher-title">${escapeText(info.label)}</span>
+          <span class="teacher-meta">${clockFor(lesson.time)} · ${status}</span>
+        </span>
+        <span class="teacher-go" aria-hidden="true">${PLAY_ICON}</span>`;
+      /* 没配内容的课节：不渲染成链接、按不进去（灰卡只展示；teacher-empty.html 仍可直开） */
+      if (!lesson.hasContent) {
+        return `<div class="teacher-card is-empty" data-teacher-card="${no}" aria-disabled="true">${body}</div>`;
+      }
+      return `<a class="teacher-card" href="classroom.html?${previewApi.queryFor(no)}" data-teacher-card="${no}">${body}</a>`;
     });
     list.innerHTML = cards.join("");
-    list.querySelectorAll("[data-teacher-card]").forEach((card) => {
+    list.querySelectorAll("a[data-teacher-card]").forEach((card) => {
       card.addEventListener("click", () => {
         const no = Number(card.dataset.teacherCard) || 0;
         if (no === 1 || no === 2) previewApi.startSession(no);

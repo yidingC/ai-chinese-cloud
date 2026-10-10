@@ -1,112 +1,79 @@
-/* 老师预览页（teacher.html / teacher-empty.html）· 2026-10-08
-   卡片照课堂页轮次卡（.cls-level）的材质与配色：厚圆角 + 硬底边 + 右侧 ▶；
-   卡面只放课节名，不放人数 / 闪电 / 星星。 */
+/* 老师预览页（teacher.html / teacher-empty.html）· 2026-10-10
+   课节列表＝白卡列表（已定稿方案二，模拟稿 mockup-teacher-b2.html）：
+   左日期块 + 中三行（班级 / 课次·标题 / 时间·状态）+ 右 ▶；
+   没配内容的那节整卡降灰、按不进去（只展示）。样式值一律照模拟稿抄。 */
 
 .teacher-page { padding: 18px 16px 40px; }
 
 .teacher-list {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   margin-top: 6px;
 }
 
 .teacher-card {
-  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: 58px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 118px;
-  padding: 18px 16px 18px 20px;
-  overflow: hidden;
-  border-radius: 28px;
-  color: #ffffff;
-  text-align: left;
+  gap: 14px;
+  padding: 13px 14px;
+  border: 2px solid #e8e5f4;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(58, 48, 116, 0.07);
+  color: var(--ink);
   text-decoration: none;
+  transition: transform .16s ease;
   cursor: pointer;
-  transition: transform .18s cubic-bezier(.2,.9,.3,1.25), box-shadow .18s ease, filter .2s ease;
 }
 
-/* 卡面高光：让它像一块实体卡片，不像一块色板 */
-.teacher-card::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 54%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0));
-  pointer-events: none;
-}
+/* 按下下沉只留给能点的卡（灰卡不是链接，按不进去） */
+a.teacher-card:active { transform: translateY(2px); }
 
-.teacher-card[data-tone="violet"] {
-  background:
-    radial-gradient(circle at 86% 6%, rgba(255,255,255,.30), transparent 34%),
-    linear-gradient(152deg, #8b6bff 0%, #6b4bf5 56%, #5a38ec 100%);
-  box-shadow: 0 8px 0 #4028b8, 0 20px 34px rgba(76, 53, 232, 0.26);
-}
-
-.teacher-card[data-tone="mint"] {
-  background:
-    radial-gradient(circle at 86% 6%, rgba(255,255,255,.32), transparent 34%),
-    linear-gradient(152deg, #55e0c4 0%, #2fb89c 58%, #1f9e86 100%);
-  box-shadow: 0 8px 0 #187a66, 0 20px 34px rgba(42, 142, 126, 0.24);
-}
-
-.teacher-card[data-tone="orange"] {
-  background:
-    radial-gradient(circle at 86% 6%, rgba(255,255,255,.34), transparent 34%),
-    linear-gradient(152deg, #ffc46b 0%, #f79a3c 58%, #e9821f 100%);
-  box-shadow: 0 8px 0 #b96513, 0 20px 34px rgba(233, 130, 31, 0.24);
-}
-
-.teacher-card::after {
-  content: "";
-  position: absolute;
-  right: -34px;
-  top: -46px;
-  width: 152px;
-  height: 152px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  pointer-events: none;
-}
-
-.teacher-card:active {
-  transform: translateY(8px);
-  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
-}
-
-.teacher-card[data-tone="violet"]:active { box-shadow: 0 0 0 #4028b8; }
-.teacher-card[data-tone="mint"]:active { box-shadow: 0 0 0 #187a66; }
-.teacher-card[data-tone="orange"]:active { box-shadow: 0 0 0 #b96513; }
-
-.teacher-card-title {
-  position: relative;
-  z-index: 2;
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-}
-
-.teacher-card-action {
-  position: relative;
-  z-index: 2;
+.teacher-date {
   display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  color: #ffffff;
-  filter: drop-shadow(0 3px 7px rgba(23, 12, 84, 0.30));
+  justify-items: center;
+  gap: 2px;
+  padding: 7px 0 8px;
+  border-radius: 16px;
+  background: #eeeaff;
+  color: var(--purple);
+  line-height: 1;
 }
 
-.teacher-card-action svg {
-  width: 42px;
-  height: 42px;
-  margin-left: 5px;
+.teacher-date small { font-size: 10px; font-weight: 900; letter-spacing: .03em; }
+.teacher-date b { font-size: 21px; font-weight: 900; }
+.teacher-date i { font-style: normal; font-size: 10px; font-weight: 800; opacity: .78; }
+
+.teacher-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
+
+.teacher-class { color: #56517a; font-size: 12px; font-weight: 900; line-height: 1.25; }
+.teacher-title { font-size: 17px; font-weight: 900; line-height: 1.25; }
+.teacher-meta { color: var(--muted); font-size: 12px; font-weight: 800; line-height: 1.3; }
+
+.teacher-go {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  background: #eeeaff;
+  color: var(--purple);
+}
+
+.teacher-go svg { width: 20px; height: 20px; margin-left: 3px; }
+
+/* 没配内容的那节（第 3 课）：整卡降灰、按不进去（光标不变手、按下不下沉；空页仍可直开） */
+.teacher-card.is-empty { cursor: default; }
+.teacher-card.is-empty .teacher-date { background: #f1f0f7; color: #a29cba; }
+.teacher-card.is-empty .teacher-class { color: #b3adc8; }
+.teacher-card.is-empty .teacher-title { color: #a29cba; }
+.teacher-card.is-empty .teacher-meta { color: #b3adc8; }
+.teacher-card.is-empty .teacher-go { background: #f1f0f7; color: #b3adc8; }
 
 /* ---- 没配内容的课节（teacher-empty.html）：小灰图标 + 一句话 ---- */
 .teacher-empty {

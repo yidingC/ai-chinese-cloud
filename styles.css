@@ -1543,6 +1543,60 @@ a:focus-visible {
   box-shadow: inset 0 0 0 1px rgba(101,82,255,.12);
 }
 
+/* 身份开关（左「老师端」/ 右「学生端」）：点哪边切哪边，也能拖 */
+.demo-role-switch {
+  position: relative;
+  display: flex;
+  margin-bottom: 10px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #f1eef9;
+  box-shadow: inset 0 1px 2px rgba(31, 25, 72, 0.06);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+}
+
+.demo-role-knob {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7868ff, #5b43eb);
+  box-shadow: 0 8px 18px rgba(101, 82, 255, 0.28);
+  transition: transform .28s cubic-bezier(.22, .9, .36, 1);
+}
+
+.demo-role-switch[data-role="student"] .demo-role-knob {
+  transform: translateX(100%);
+}
+
+.demo-role-switch.is-dragging .demo-role-knob {
+  transition: none;
+}
+
+.demo-role-option {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  padding: 12px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6c6580;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: color .26s ease;
+}
+
+.demo-role-option[aria-pressed="true"] {
+  color: #ffffff;
+}
+
 .demo-reset {
   width: 100%;
   margin-top: 12px;
